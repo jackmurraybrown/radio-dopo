@@ -37,7 +37,7 @@ export async function sendShowInfoRequest({
 	episodeId,
 	baseUrl
 }) {
-	const formUrl = `${baseUrl}/submission/${episodeId}`;
+	const formUrl = `${baseUrl}/submission?id=${episodeId}`;
 
 	const emailHtml = render({
 		template: ShowInfoRequest,
