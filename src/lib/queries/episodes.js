@@ -151,6 +151,38 @@ export async function getEpisodesByShow(showId) {
 }
 
 /**
+ * Get an episode that is airing at a specific timestamp
+ * @param {string} time - ISO 8601 timestamp
+ * @returns {Promise<Object|null>} Episode object or null if not found
+ */
+export async function getEpisodeByTime(time) {
+	try {
+		const episodes = await directus.request(
+			readItems('episodes', {
+				fields: ['*', { translations: ['*'] }, { show_id: ['id', 'name', 'slug', 'image', { translations: ['*'] }] }, { audio: ['filename_disk'] }],
+				filter: {
+					start: { _lte: time },
+					end: { _gte: time }
+				},
+				limit: 1
+			})
+		);
+		if (episodes.length === 0) return null;
+		const episode = episodes[0];
+		return {
+			...episode,
+			show: episode.show_id,
+			audio: episode.audio?.filename_disk
+				? getAssetUrl(episode.audio.filename_disk)
+				: null
+		};
+	} catch (error) {
+		console.error('Error fetching episode by time:', error);
+		throw error;
+	}
+}
+
+/**
  * Get recent episodes (limit to a specific number)
  * @param {number} limit - Number of episodes to return
  * @returns {Promise<Array>} Array of recent episode objects

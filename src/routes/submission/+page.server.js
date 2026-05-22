@@ -9,7 +9,9 @@ export async function load({ url }) {
 	// Load submission form info page content
 	let submissionForm = null;
 	try {
-		submissionForm = await directusServer.request(readSingleton('submission_form', { fields: ['content'] }));
+		submissionForm = await directusServer.request(readSingleton('submission_form', {
+			fields: ['content', { resources: ['id', 'directus_files_id.id', 'directus_files_id.title', 'directus_files_id.filename_download'] }]
+		}));
 	} catch (err) {
 		console.error('Error loading submission form content:', err);
 	}
@@ -21,7 +23,7 @@ export async function load({ url }) {
 	try {
 		const episode = await directus.request(
 			readItem('episodes', episodeId, {
-				fields: ['id', 'title', 'type', 'image', 'start', 'end', 'translations.*', 'show_id.id', 'show_id.name', 'show_id.slug']
+				fields: ['id', 'title', 'type', 'image', 'start', 'end', 'tracklist', 'translations.*', 'show_id.id', 'show_id.name', 'show_id.slug']
 			})
 		);
 
@@ -49,6 +51,7 @@ export const actions = {
 		const title = formData.get('title');
 		const descriptionEn = formData.get('description_en');
 		const descriptionIt = formData.get('description_it');
+		const tracklist = formData.get('tracklist');
 		const imageId = formData.get('image_id');
 		const audioId = formData.get('audio_id');
 		const enTranslationId = formData.get('en_translation_id') || null;
@@ -114,6 +117,10 @@ export const actions = {
 
 			if (audioId) {
 				updateData.audio = audioId;
+			}
+
+			if (tracklist !== null) {
+				updateData.tracklist = tracklist.trim() || null;
 			}
 
 			await directusServer.request(updateItem('episodes', episodeId, updateData));

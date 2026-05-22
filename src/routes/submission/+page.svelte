@@ -34,6 +34,9 @@
   $: formContent = submissionForm?.content
     ? marked(submissionForm.content)
     : "";
+  $: resources = (submissionForm?.resources || [])
+    .map((r) => r.directus_files_id)
+    .filter(Boolean);
   $: isPreRecord = episode?.type === "Pre-record";
   $: episodeDate = episode?.start
     ? format(new Date(episode.start), "MMMM d, yyyy")
@@ -187,6 +190,28 @@
             </div>
           {/if}
 
+          {#if resources.length > 0}
+            <div class="border-t border-white/20 pt-6">
+              <h3 class="text-lg uppercase letter-spacing-wide mb-4">
+                Resources
+              </h3>
+              <ul class="space-y-2">
+                {#each resources as file}
+                  <li>
+                    <a
+                      href="https://cms.radiodopo.it/assets/{file.id}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex items-center gap-2 text-pink hover:opacity-70 transition-opacity"
+                    >
+                      {file.title || file.filename_download}
+                    </a>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+
           <div class="border-t border-white/20 pt-6">
             <label class="flex items-start gap-3 cursor-pointer">
               <input
@@ -229,10 +254,18 @@
           <input type="hidden" name="audio_id" value={audioId || ""} />
           <!-- Hidden translation IDs -->
           {#if enTranslation?.id}
-            <input type="hidden" name="en_translation_id" value={enTranslation.id} />
+            <input
+              type="hidden"
+              name="en_translation_id"
+              value={enTranslation.id}
+            />
           {/if}
           {#if itTranslation?.id}
-            <input type="hidden" name="it_translation_id" value={itTranslation.id} />
+            <input
+              type="hidden"
+              name="it_translation_id"
+              value={itTranslation.id}
+            />
           {/if}
 
           <div class="space-y-6">
@@ -439,6 +472,27 @@
                 {#if audioError}
                   <p class="mt-2 text-red-400">{audioError}</p>
                 {/if}
+              </div>
+            {/if}
+
+            <!-- Tracklist - Pre-records only -->
+            {#if isPreRecord}
+              <div>
+                <label
+                  for="tracklist"
+                  class="block mb-2 text-lg uppercase letter-spacing-wide"
+                >
+                  Tracklist
+                </label>
+                <textarea
+                  id="tracklist"
+                  name="tracklist"
+                  rows="8"
+                  class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
+                  placeholder="Track title - artist name"
+                  style="font-size: 1.25rem; line-height: 1.6;"
+                  >{form?.tracklist || episode.tracklist || ""}</textarea
+                >
               </div>
             {/if}
 

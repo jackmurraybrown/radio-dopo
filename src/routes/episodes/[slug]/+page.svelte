@@ -95,4 +95,11 @@
       </div>
     {/if}
   </div>
+
+  {#if data.episode.type === "Pre-record" && data.episode.tracklist}
+    <div class="mt-12">
+      <h3 class="text-white mb-4">Tracklist</h3>
+      <p class="text-white/80 whitespace-pre-line">{data.episode.tracklist}</p>
+    </div>
+  {/if}
 </div>
