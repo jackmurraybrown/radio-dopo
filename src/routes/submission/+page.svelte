@@ -144,7 +144,7 @@
     {#if !episode}
       <div class="flex items-center justify-center min-h-[40vh]">
         <p class="text-center text-xl">
-          Error loading form, please contact Radio Dopo for assistance.
+          Sorry, episode not found. Please contact Radio Dopo for assistance.
         </p>
       </div>
     {:else}

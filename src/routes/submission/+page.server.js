@@ -21,20 +21,20 @@ export async function load({ url }) {
 	}
 
 	try {
-		const episode = await directus.request(
+		const episode = await directusServer.request(
 			readItem('episodes', episodeId, {
-				fields: ['id', 'title', 'type', 'image', 'start', 'end', 'tracklist', 'translations.*', 'show_id.id', 'show_id.name', 'show_id.slug']
+				fields: ['id', 'title', 'type', 'image', 'start', 'end', 'tracklist', 'booking_status', 'translations.*', 'show_id.id', 'show_id.name', 'show_id.slug']
 			})
 		);
 
-		if (!episode) {
-			return { episode: null, submissionForm, loadError: true };
+		if (!episode || episode.booking_status !== 'Confirmed') {
+			return { episode: null, submissionForm };
 		}
 
 		return { episode, submissionForm };
 	} catch (err) {
 		console.error('Error loading episode:', err);
-		return { episode: null, submissionForm, loadError: true };
+		return { episode: null, submissionForm };
 	}
 }
 
