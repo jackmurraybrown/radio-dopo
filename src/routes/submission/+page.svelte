@@ -13,6 +13,13 @@
   let infoRead = false;
   let currentStep = 1;
 
+  // Description state (at least one required)
+  let descriptionEn = form?.description_en ?? "";
+  let descriptionIt = form?.description_it ?? "";
+  $: if (enTranslation?.description && !descriptionEn) descriptionEn = enTranslation.description;
+  $: if (itTranslation?.description && !descriptionIt) descriptionIt = itTranslation.description;
+  $: hasDescription = descriptionEn.trim() !== "" || descriptionIt.trim() !== "";
+
   // Image state
   let imagePreview = "";
   let imageName = "";
@@ -496,27 +503,24 @@
               </div>
             {/if}
 
-            <!-- Descriptions -->
+            <!-- Descriptions (at least one required) -->
             <div class="space-y-6">
               <div>
                 <label
                   for="description_it"
                   class="block mb-2 text-lg uppercase letter-spacing-wide"
                 >
-                  Description (IT) *
+                  Description (IT)
                 </label>
                 <textarea
                   id="description_it"
                   name="description_it"
                   rows="8"
-                  required
+                  bind:value={descriptionIt}
                   class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
                   placeholder="Inserisci la descrizione dell'episodio in italiano"
                   style="font-size: 1.25rem; line-height: 1.6;"
-                  >{form?.description_it ||
-                    itTranslation.description ||
-                    ""}</textarea
-                >
+                ></textarea>
               </div>
 
               <div>
@@ -524,21 +528,22 @@
                   for="description_en"
                   class="block mb-2 text-lg uppercase letter-spacing-wide"
                 >
-                  Description (EN) *
+                  Description (EN)
                 </label>
                 <textarea
                   id="description_en"
                   name="description_en"
                   rows="8"
-                  required
+                  bind:value={descriptionEn}
                   class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
                   placeholder="Enter episode description in English"
                   style="font-size: 1.25rem; line-height: 1.6;"
-                  >{form?.description_en ||
-                    enTranslation.description ||
-                    ""}</textarea
-                >
+                ></textarea>
               </div>
+
+              {#if !hasDescription}
+                <p class="text-red-400">At least one description (EN or IT) is required.</p>
+              {/if}
             </div>
 
             {#if form?.error}
@@ -561,7 +566,8 @@
                   imageUploading ||
                   audioUploading ||
                   !imageId ||
-                  (isPreRecord && !audioId)}
+                  (isPreRecord && !audioId) ||
+                  !hasDescription}
                 class="px-8 py-4 bg-pink text-black rounded no-underline text-lg uppercase letter-spacing-wide disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {#if submitting}

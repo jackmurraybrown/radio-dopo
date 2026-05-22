@@ -112,6 +112,7 @@ export const actions = {
 			const updateData = {
 				title: title.trim(),
 				image: imageId,
+				booking_status: 'Submitted',
 				translations: { create: translationsCreate, update: translationsUpdate, delete: [] }
 			};
 
