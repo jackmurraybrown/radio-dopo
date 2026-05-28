@@ -1,10 +1,10 @@
-import { directus } from '$lib/directus.js';
 import { directusServer } from '$lib/server/directus.js';
-import { readItem, readSingleton, updateItem } from '@directus/sdk';
+import { getCalendarEvent } from '$lib/server/googleCalendar.js';
+import { readSingleton, readItems, createItem } from '@directus/sdk';
 import { fail } from '@sveltejs/kit';
 
 export async function load({ url }) {
-	const episodeId = url.searchParams.get('id');
+	const eventId = url.searchParams.get('eventId');
 
 	// Load submission form info page content
 	let submissionForm = null;
@@ -16,34 +16,32 @@ export async function load({ url }) {
 		console.error('Error loading submission form content:', err);
 	}
 
-	if (!episodeId) {
-		return { episode: null, submissionForm, loadError: true };
+	if (!eventId) {
+		return { calendarEvent: null, shows: [], submissionForm };
 	}
 
-	try {
-		const episode = await directusServer.request(
-			readItem('episodes', episodeId, {
-				fields: ['id', 'title', 'type', 'image', 'start', 'end', 'tracklist', 'booking_status', 'translations.*', 'show_id.id', 'show_id.name', 'show_id.slug']
-			})
-		);
+	// Fetch the Google Calendar event and the shows list in parallel
+	const [calendarEvent, shows] = await Promise.all([
+		getCalendarEvent(eventId).catch((err) => {
+			console.error('Error loading calendar event:', err);
+			return null;
+		}),
+		directusServer.request(readItems('shows', {
+			fields: ['id', 'name'],
+			sort: ['name'],
+			limit: 500,
+		})).catch(() => []),
+	]);
 
-		if (!episode || episode.booking_status !== 'Confirmed') {
-			return { episode: null, submissionForm };
-		}
-
-		return { episode, submissionForm };
-	} catch (err) {
-		console.error('Error loading episode:', err);
-		return { episode: null, submissionForm };
-	}
+	return { calendarEvent, shows, submissionForm };
 }
 
 export const actions = {
 	submit: async ({ request, url }) => {
-		const episodeId = url.searchParams.get('id');
+		const eventId = url.searchParams.get('eventId');
 
-		if (!episodeId) {
-			return fail(400, { error: 'Missing episode ID.' });
+		if (!eventId) {
+			return fail(400, { error: 'Missing event ID.' });
 		}
 
 		const formData = await request.formData();
@@ -54,87 +52,111 @@ export const actions = {
 		const tracklist = formData.get('tracklist');
 		const imageId = formData.get('image_id');
 		const audioId = formData.get('audio_id');
-		const enTranslationId = formData.get('en_translation_id') || null;
-		const itTranslationId = formData.get('it_translation_id') || null;
+		const type = formData.get('type');
+		const showId = formData.get('show_id');
+		const newShowName = formData.get('new_show_name');
+		const showImageId = formData.get('show_image_id');
+		const showDescriptionEn = formData.get('show_description_en');
+		const showDescriptionIt = formData.get('show_description_it');
 
-		if (!title || title.trim() === '') {
-			return fail(400, {
-				error: 'Episode title is required.',
-				title,
-				description_en: descriptionEn,
-				description_it: descriptionIt
-			});
+		// Validation
+		if (!title?.trim()) {
+			return fail(400, { error: 'Episode title is required.' });
 		}
 
-		const hasEnDescription = descriptionEn && descriptionEn.trim() !== '';
-		const hasItDescription = descriptionIt && descriptionIt.trim() !== '';
-
+		const hasEnDescription = descriptionEn?.trim();
+		const hasItDescription = descriptionIt?.trim();
 		if (!hasEnDescription && !hasItDescription) {
-			return fail(400, {
-				error: 'At least one description (EN or IT) is required.',
-				title,
-				description_en: descriptionEn,
-				description_it: descriptionIt
-			});
+			return fail(400, { error: 'At least one description (EN or IT) is required.' });
 		}
 
 		if (!imageId) {
-			return fail(400, {
-				error: 'Episode image is required.',
-				title,
-				description_en: descriptionEn,
-				description_it: descriptionIt
-			});
+			return fail(400, { error: 'Episode image is required.' });
 		}
 
+		if (!showId && !newShowName?.trim()) {
+			return fail(400, { error: 'Please select or create a show.' });
+		}
+
+		if (showId === 'new') {
+			const hasShowEn = showDescriptionEn?.trim();
+			const hasShowIt = showDescriptionIt?.trim();
+			if (!hasShowEn && !hasShowIt) {
+				return fail(400, { error: 'At least one show description (EN or IT) is required.' });
+			}
+			if (!showImageId) {
+				return fail(400, { error: 'A show image is required.' });
+			}
+		}
+
+		// Re-fetch event to get authoritative start/end times
+		let calendarEvent;
 		try {
-			const translationsUpdate = [];
+			calendarEvent = await getCalendarEvent(eventId);
+		} catch {
+			return fail(400, { error: 'Could not load event details. Please try again.' });
+		}
+
+		if (!calendarEvent) {
+			return fail(400, { error: 'Event not found.' });
+		}
+
+		// Strip timezone offset so Directus stores the local time as-is, not converted to UTC
+		const stripTz = (s) => s?.replace(/([+-]\d{2}:\d{2}|Z)$/, '') ?? s;
+		const start = stripTz(calendarEvent.start?.dateTime || calendarEvent.start?.date);
+		const end = stripTz(calendarEvent.end?.dateTime || calendarEvent.end?.date);
+
+		try {
+			// Create new show if needed
+			let resolvedShowId = showId;
+			if (showId === 'new') {
+				const showTranslations = [];
+				if (showDescriptionEn?.trim()) {
+					showTranslations.push({ description: showDescriptionEn.trim(), languages_code: 'en-US' });
+				}
+				if (showDescriptionIt?.trim()) {
+					showTranslations.push({ description: showDescriptionIt.trim(), languages_code: 'it-IT' });
+				}
+				const newShow = await directusServer.request(
+					createItem('shows', {
+						name: newShowName.trim(),
+						status: 'published',
+						image: showImageId,
+						translations: { create: showTranslations, update: [], delete: [] },
+					})
+				);
+				resolvedShowId = newShow.id;
+			}
+
+			// Build translations
 			const translationsCreate = [];
-
 			if (hasEnDescription) {
-				const data = { title: title.trim(), description: descriptionEn.trim(), languages_code: 'en-US' };
-				if (enTranslationId) {
-					translationsUpdate.push({ id: enTranslationId, ...data });
-				} else {
-					translationsCreate.push(data);
-				}
+				translationsCreate.push({ title: title.trim(), description: descriptionEn.trim(), languages_code: 'en-US' });
 			}
-
 			if (hasItDescription) {
-				const data = { title: title.trim(), description: descriptionIt.trim(), languages_code: 'it-IT' };
-				if (itTranslationId) {
-					translationsUpdate.push({ id: itTranslationId, ...data });
-				} else {
-					translationsCreate.push(data);
-				}
+				translationsCreate.push({ title: title.trim(), description: descriptionIt.trim(), languages_code: 'it-IT' });
 			}
 
-			const updateData = {
+			const episodeData = {
 				title: title.trim(),
+				type,
+				start,
+				end,
 				image: imageId,
 				booking_status: 'Submitted',
-				translations: { create: translationsCreate, update: translationsUpdate, delete: [] }
+				show_id: resolvedShowId,
+				translations: { create: translationsCreate, update: [], delete: [] },
 			};
 
-			if (audioId) {
-				updateData.audio = audioId;
-			}
+			if (audioId) episodeData.audio = audioId;
+			if (tracklist?.trim()) episodeData.tracklist = tracklist.trim();
 
-			if (tracklist !== null) {
-				updateData.tracklist = tracklist.trim() || null;
-			}
-
-			await directusServer.request(updateItem('episodes', episodeId, updateData));
+			await directusServer.request(createItem('episodes', episodeData));
 
 			return { success: true };
 		} catch (err) {
-			console.error('Error updating episode:', err);
-			return fail(500, {
-				error: 'Failed to update episode. Please try again.',
-				title,
-				description_en: descriptionEn,
-				description_it: descriptionIt
-			});
+			console.error('Error creating episode:', err);
+			return fail(500, { error: 'Failed to submit. Please try again.' });
 		}
 	}
 };

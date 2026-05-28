@@ -2,7 +2,6 @@
 	import { Html, Head, Body, Container, Heading, Text, Link, Hr } from 'svelte-email';
 
 	export let showName = '';
-	export let episodeTitle = '';
 	export let episodeDate = '';
 	export let formUrl = '';
 </script>
@@ -22,12 +21,6 @@
 			<Text style="font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
 				Ciao! Your show <strong style="color: #1ba9e3;">{showName}</strong> is scheduled to air on
 				<strong>{episodeDate}</strong>.
-			</Text>
-
-			<Text style="font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
-				{#if episodeTitle}
-					Episode: <strong>{episodeTitle}</strong>
-				{/if}
 			</Text>
 
 			<Text style="font-size: 18px; line-height: 1.6; margin-bottom: 30px;">

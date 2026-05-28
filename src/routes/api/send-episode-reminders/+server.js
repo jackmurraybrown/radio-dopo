@@ -1,103 +1,58 @@
 import { json, error } from '@sveltejs/kit';
-import { directus } from '$lib/directus.js';
-import { readItems } from '@directus/sdk';
+import { getEventsOnDay } from '$lib/server/googleCalendar.js';
 import { sendShowInfoRequest } from '$lib/server/email.js';
-import { addDays, format, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
+import { CRON_SECRET } from '$env/static/private';
 
-/**
- * API route to send episode info reminders
- * This can be called by a cron job or manually
- */
+// Send reminders 10, 4, and 3 days before the show
+const REMINDER_DAYS = [10, 4, 3];
+
 export async function POST({ request, url }) {
-	// Optional: Add authentication/secret verification
 	const authHeader = request.headers.get('authorization');
-	const expectedSecret = process.env.CRON_SECRET;
-
-	if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+	if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
 		throw error(401, 'Unauthorized');
 	}
 
 	const baseUrl = url.origin;
+	const results = [];
+	const errors = [];
 
-	try {
-		// Calculate date range for episodes in 2 weeks
-		const twoWeeksFromNow = addDays(new Date(), 14);
-		const startDate = startOfDay(twoWeeksFromNow);
-		const endDate = endOfDay(twoWeeksFromNow);
-
-		// Fetch episodes scheduled for 2 weeks from now
-		const episodes = await directus.request(
-			readItems('episodes', {
-				filter: {
-					start: {
-						_between: [startDate.toISOString(), endDate.toISOString()]
-					},
-					status: {
-						_neq: 'archived' // Don't send reminders for archived episodes
-					}
-				},
-				fields: [
-					'id',
-					'title',
-					'start',
-					'show_id.id',
-					'show_id.name',
-					'show_id.slug',
-					'show_id.email' // This field needs to be added to Directus shows collection
-				]
-			})
-		);
-
-		const results = [];
-		const errors = [];
-
-		// Send email for each episode
-		for (const episode of episodes) {
-			// Skip if show doesn't have an email
-			if (!episode.show_id?.email) {
-				errors.push({
-					episodeId: episode.id,
-					error: 'No email configured for show',
-					showName: episode.show_id?.name
-				});
-				continue;
-			}
-
-			try {
-				await sendShowInfoRequest({
-					to: episode.show_id.email,
-					showName: episode.show_id.name,
-					episodeTitle: episode.title || 'Untitled Episode',
-					episodeDate: format(new Date(episode.start), 'MMMM d, yyyy'),
-					episodeId: episode.id,
-					baseUrl
-				});
-
-				results.push({
-					episodeId: episode.id,
-					showName: episode.show_id.name,
-					email: episode.show_id.email,
-					sent: true
-				});
-			} catch (err) {
-				console.error(`Failed to send email for episode ${episode.id}:`, err);
-				errors.push({
-					episodeId: episode.id,
-					error: err.message,
-					showName: episode.show_id?.name
-				});
-			}
+	for (const days of REMINDER_DAYS) {
+		let events;
+		try {
+			events = await getEventsOnDay(days);
+		} catch (err) {
+			console.error(`[send-episode-reminders] Failed to fetch events for day +${days}:`, err);
+			continue;
 		}
 
-		return json({
-			success: true,
-			totalEpisodes: episodes.length,
-			emailsSent: results.length,
-			results,
-			errors: errors.length > 0 ? errors : undefined
-		});
-	} catch (err) {
-		console.error('Error in send-episode-reminders:', err);
-		throw error(500, `Failed to process reminders: ${err.message}`);
+		for (const event of events) {
+			// Only send to non-organizer attendees with an email address
+			const attendees = (event.attendees ?? []).filter((a) => !a.organizer && a.email);
+			if (attendees.length === 0) continue;
+
+			const startDate = event.start?.dateTime || event.start?.date;
+			const localDate = startDate?.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
+			const episodeDate = localDate ? format(new Date(localDate), 'MMMM d, yyyy HH:mm') : '';
+			const showName = event.summary || 'Your Show';
+			const formUrl = `${baseUrl}/submission?eventId=${event.id}`;
+
+			for (const attendee of attendees) {
+				try {
+					await sendShowInfoRequest({ to: attendee.email, showName, episodeDate, formUrl });
+					results.push({ eventId: event.id, showName, email: attendee.email, daysAhead: days });
+				} catch (err) {
+					console.error(`[send-episode-reminders] Failed to email ${attendee.email}:`, err);
+					errors.push({ eventId: event.id, email: attendee.email, error: err.message });
+				}
+			}
+		}
 	}
+
+	return json({
+		success: true,
+		emailsSent: results.length,
+		results,
+		...(errors.length ? { errors } : {}),
+	});
 }
