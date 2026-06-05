@@ -3,6 +3,10 @@ import { getCalendarEvent } from '$lib/server/googleCalendar.js';
 import { readSingleton, readItems, createItem } from '@directus/sdk';
 import { fail } from '@sveltejs/kit';
 
+function slugify(str) {
+	return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export async function load({ url }) {
 	const eventId = url.searchParams.get('eventId');
 
@@ -112,17 +116,18 @@ export const actions = {
 			if (showId === 'new') {
 				const showTranslations = [];
 				if (showDescriptionEn?.trim()) {
-					showTranslations.push({ description: showDescriptionEn.trim(), languages_code: 'en-US' });
+					showTranslations.push({ name: newShowName.trim(), description: showDescriptionEn.trim(), languages_code: 'en-US' });
 				}
 				if (showDescriptionIt?.trim()) {
-					showTranslations.push({ description: showDescriptionIt.trim(), languages_code: 'it-IT' });
+					showTranslations.push({ name: newShowName.trim(), description: showDescriptionIt.trim(), languages_code: 'it-IT' });
 				}
 				const newShow = await directusServer.request(
 					createItem('shows', {
 						name: newShowName.trim(),
+						slug: slugify(newShowName.trim()),
 						status: 'published',
 						image: showImageId,
-						translations: { create: showTranslations, update: [], delete: [] },
+						translations: showTranslations,
 					})
 				);
 				resolvedShowId = newShow.id;
@@ -137,15 +142,21 @@ export const actions = {
 				translationsCreate.push({ title: title.trim(), description: descriptionIt.trim(), languages_code: 'it-IT' });
 			}
 
+			// Append date and time to slug to avoid collisions between episodes with the same title
+			const dateTimeStr = start ? start.slice(0, 16).replace(/[-T:]/g, '') : Date.now().toString();
+			const slug = `${slugify(title.trim())}-${dateTimeStr}`;
+
 			const episodeData = {
 				title: title.trim(),
+				slug,
 				type,
 				start,
 				end,
 				image: imageId,
 				booking_status: 'Submitted',
+				cal_id: eventId,
 				show_id: resolvedShowId,
-				translations: { create: translationsCreate, update: [], delete: [] },
+				translations: translationsCreate,
 			};
 
 			if (audioId) episodeData.audio = audioId;

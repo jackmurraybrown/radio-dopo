@@ -1,8 +1,11 @@
-# Cloudflare Workers configuration for Radio Dopo
-
-name = "radio-dopo"
+# Cloudflare Worker — cron only, separate from the Pages deployment
+name = "radio-dopo-cron"
+main = "cron-worker.js"
 compatibility_date = "2024-01-01"
 
-# Cron trigger to run daily at 9:00 AM UTC
 [triggers]
 crons = ["0 9 * * *"]
+
+# Set these in the Cloudflare dashboard under Workers > radio-dopo-cron > Settings > Variables
+# CRON_SECRET = "..."
+# SITE_URL = "https://radiodopo.it"

@@ -16,7 +16,12 @@
   // Show selection
   let selectedShowId = form?.show_id ?? "";
   let newShowName = form?.new_show_name ?? "";
-  $: isNewShow = selectedShowId === "new";
+  let isNewShow = form?.show_id === "new" || false;
+
+  function toggleNewShow() {
+    isNewShow = !isNewShow;
+    if (isNewShow) selectedShowId = "";
+  }
 
   // New show fields
   let showDescriptionEn = form?.show_description_en ?? "";
@@ -271,15 +276,24 @@
             </div>
 
             <!-- Show selection -->
-            <div>
-              <label for="show_id" class="block mb-2 text-lg uppercase letter-spacing-wide">Show *</label>
-              <select id="show_id" name="show_id" bind:value={selectedShowId} required class="w-full pill-input">
-                <option value="" disabled>Select your show…</option>
-                {#each shows as show}
-                  <option value={show.id}>{show.name}</option>
-                {/each}
-                <option value="new">— Add new show —</option>
-              </select>
+            <div class="space-y-3">
+              <label class="block text-lg uppercase letter-spacing-wide">Show *</label>
+
+              {#if !isNewShow}
+                <select id="show_id" name="show_id" bind:value={selectedShowId} required class="w-full pill-input">
+                  <option value="" disabled>Select your show…</option>
+                  {#each shows as show}
+                    <option value={show.id}>{show.name}</option>
+                  {/each}
+                </select>
+              {:else}
+                <input type="hidden" name="show_id" value="new" />
+              {/if}
+
+              <button type="button" on:click={toggleNewShow}
+                class="text-sm uppercase letter-spacing-wide underline underline-offset-4 opacity-70 hover:opacity-100 transition-opacity">
+                {isNewShow ? "← Select existing show" : "+ Add new show"}
+              </button>
             </div>
 
             {#if isNewShow}
@@ -508,7 +522,7 @@
               <button type="submit"
                 disabled={submitting || imageUploading || audioUploading || showImageUploading
                   || !imageId || (isPreRecord && !audioId) || !hasDescription
-                  || !selectedShowId || (isNewShow && (!newShowName.trim() || !showImageId || !showHasDescription))}
+                  || (!isNewShow && !selectedShowId) || (isNewShow && (!newShowName.trim() || !showImageId || !showHasDescription))}
                 class="px-8 py-4 bg-pink text-black rounded no-underline text-lg uppercase letter-spacing-wide disabled:opacity-50 disabled:cursor-not-allowed">
                 {#if submitting}
                   Submitting...

@@ -1,29 +1,37 @@
-import { render } from 'svelte-email';
-import { Resend } from 'resend';
-import ShowInfoRequest from '$lib/emails/ShowInfoRequest.svelte';
+import { RESEND_API_KEY, DOPO_FROM_EMAIL } from '$env/static/private';
+
+const from = DOPO_FROM_EMAIL || 'Radio Dopo <mail@mail.radiodopo.it>';
 
 /**
- * Send show information request email
+ * Send a show info request email using a Resend template.
  * @param {Object} params
  * @param {string} params.to - Recipient email address
- * @param {string} params.showName - Name of the show
- * @param {string} params.episodeDate - Formatted date of the episode
+ * @param {string} params.templateId - Resend template ID
+ * @param {string} params.name - Attendee / host name
+ * @param {string} params.showDate - Formatted date and time of the episode
  * @param {string} params.formUrl - Full submission form URL
  */
-export async function sendShowInfoRequest({ to, showName, episodeDate, formUrl }) {
-	const resend = new Resend(process.env.RESEND_API_KEY);
-
-	const html = render({
-		template: ShowInfoRequest,
-		props: { showName, episodeDate, formUrl }
+export async function sendShowInfoRequest({ to, templateId, name, showDate, formUrl }) {
+	const res = await fetch('https://api.resend.com/emails', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${RESEND_API_KEY}`,
+		},
+		body: JSON.stringify({
+			from,
+			to: [to],
+			template_id: templateId,
+			variables: {
+				NAME: name,
+				SHOW_DATE: showDate,
+				FORM_URL: formUrl,
+			},
+		}),
 	});
 
-	const { error } = await resend.emails.send({
-		from: process.env.DOPO_FROM_EMAIL || 'Radio Dopo <mail@mail.radiodopo.it>',
-		to: [to],
-		subject: `Episode Info Needed: ${showName} - ${episodeDate}`,
-		html,
-	});
-
-	if (error) throw new Error(`Email sending failed: ${error.message}`);
+	if (!res.ok) {
+		const body = await res.text();
+		throw new Error(`Email sending failed: ${res.status} ${body}`);
+	}
 }

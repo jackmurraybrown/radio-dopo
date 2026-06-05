@@ -33,9 +33,7 @@ export async function scheduled(event) {
 					const result = await response.json();
 
 					if (response.ok) {
-						console.log(
-							`Cron job completed successfully. Sent ${result.emailsSent} emails out of ${result.totalEpisodes} episodes.`
-						);
+						console.log(`Cron job completed. Sent ${result.emailsSent} emails.`);
 					} else {
 						console.error('Cron job failed:', result);
 					}
