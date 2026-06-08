@@ -58,11 +58,11 @@
         <h3
           class="font-normal m-0 text-white uppercase text-left max-md:truncate"
         >
-          {episode.title}
+          {episode.show.name}
         </h3>
       {/if}
       <p class="font-normal m-0 text-white text-left max-md:truncate">
-        {episode.show.name}
+        {episode.title}
       </p>
     </div>
   </div>
