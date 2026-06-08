@@ -1,0 +1,586 @@
+<script>
+  import { enhance } from "$app/forms";
+  import { format } from "date-fns";
+  import { marked } from "marked";
+
+  export let data;
+  export let form;
+
+  let submitting = false;
+  let success = false;
+  let isDragging = false;
+  let isAudioDragging = false;
+  let infoRead = false;
+  let currentStep = 1;
+
+  // Show selection
+  let selectedShowId = form?.show_id ?? "";
+  let newShowName = form?.new_show_name ?? "";
+  let isNewShow = form?.show_id === "new" || false;
+
+  function toggleNewShow() {
+    isNewShow = !isNewShow;
+    if (isNewShow) selectedShowId = "";
+  }
+
+  // New show fields
+  let showDescriptionEn = form?.show_description_en ?? "";
+  let showDescriptionIt = form?.show_description_it ?? "";
+  $: showHasDescription = showDescriptionEn.trim() !== "" || showDescriptionIt.trim() !== "";
+  let showImagePreview = "";
+  let showImageName = "";
+  let showImageId = null;
+  let showImageUploading = false;
+  let showImageError = "";
+  let isShowImageDragging = false;
+
+  // Episode type
+  let episodeType = form?.type ?? "Live";
+  $: isPreRecord = episodeType === "Pre-record";
+
+  // Episode description state (at least one required)
+  let descriptionEn = form?.description_en ?? "";
+  let descriptionIt = form?.description_it ?? "";
+  $: hasDescription = descriptionEn.trim() !== "" || descriptionIt.trim() !== "";
+
+  // Episode image state
+  let imagePreview = "";
+  let imageName = "";
+  let imageId = null;
+  let imageUploading = false;
+  let imageError = "";
+
+  // Audio state
+  let audioName = "";
+  let audioSize = 0;
+  let audioId = null;
+  let audioUploading = false;
+  let audioError = "";
+
+  const AUDIO_MAX_BYTES = 350 * 1024 * 1024;
+
+  $: calendarEvent = data.calendarEvent;
+  $: shows = data.shows ?? [];
+  $: submissionForm = data.submissionForm;
+  $: formContent = submissionForm?.content ? marked(submissionForm.content) : "";
+  $: resources = (submissionForm?.resources || []).map((r) => r.directus_files_id).filter(Boolean);
+
+  $: eventTitle = calendarEvent?.summary ?? "";
+  $: eventStart = calendarEvent?.start?.dateTime || calendarEvent?.start?.date;
+  $: eventEnd = calendarEvent?.end?.dateTime || calendarEvent?.end?.date;
+  $: eventDate = eventStart ? format(new Date(eventStart), "MMMM d, yyyy") : "";
+  $: eventTime = eventStart && eventEnd
+    ? `${format(new Date(eventStart), "HH:mm")} – ${format(new Date(eventEnd), "HH:mm")}`
+    : "";
+
+  async function uploadFile(file, type) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "x-file-type": type },
+      body: fd,
+    });
+    if (!res.ok) throw new Error((await res.text()) || "Upload failed");
+    return (await res.json()).id;
+  }
+
+  async function handleImageFile(file) {
+    imageError = "";
+    imageUploading = true;
+    imageId = null;
+    const reader = new FileReader();
+    reader.onload = (e) => { imagePreview = e.target.result; };
+    reader.readAsDataURL(file);
+    imageName = file.name;
+    try {
+      imageId = await uploadFile(file, "image");
+    } catch (err) {
+      imageError = err.message || "Image upload failed. Please try again.";
+      imagePreview = "";
+      imageName = "";
+    } finally {
+      imageUploading = false;
+    }
+  }
+
+  async function handleAudioFile(file) {
+    audioError = "";
+    if (file.size > AUDIO_MAX_BYTES) {
+      audioError = "File is too large. Please upload an MP3 (max 350MB).";
+      return;
+    }
+    audioUploading = true;
+    audioId = null;
+    audioName = file.name;
+    audioSize = file.size;
+    try {
+      audioId = await uploadFile(file, "audio");
+    } catch (err) {
+      audioError = err.message || "Audio upload failed. Please try again.";
+      audioName = "";
+      audioSize = 0;
+    } finally {
+      audioUploading = false;
+    }
+  }
+
+  function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (file) handleImageFile(file);
+  }
+
+  function handleImageDrop(e) {
+    e.preventDefault();
+    isDragging = false;
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) handleImageFile(file);
+  }
+
+  function handleAudioChange(e) {
+    const file = e.target.files?.[0];
+    if (file) handleAudioFile(file);
+  }
+
+  function handleAudioDrop(e) {
+    e.preventDefault();
+    isAudioDragging = false;
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("audio/")) handleAudioFile(file);
+  }
+
+  async function handleShowImageFile(file) {
+    showImageError = "";
+    showImageUploading = true;
+    showImageId = null;
+    const reader = new FileReader();
+    reader.onload = (e) => { showImagePreview = e.target.result; };
+    reader.readAsDataURL(file);
+    showImageName = file.name;
+    try {
+      showImageId = await uploadFile(file, "image");
+    } catch (err) {
+      showImageError = err.message || "Image upload failed. Please try again.";
+      showImagePreview = "";
+      showImageName = "";
+    } finally {
+      showImageUploading = false;
+    }
+  }
+</script>
+
+<svelte:head>
+  <title>Show Submission Form - Radio Dopo</title>
+</svelte:head>
+
+<div class="min-h-screen p-4 md:p-8">
+  <div class="max-w-3xl mx-auto">
+    <h1 class="mb-8 text-pink">Show Submission Form</h1>
+
+    {#if !calendarEvent}
+      <div class="flex items-center justify-center min-h-[40vh]">
+        <p class="text-center text-xl">
+          Sorry, episode not found. Please contact Radio Dopo for assistance.
+        </p>
+      </div>
+    {:else}
+      <!-- Event info banner -->
+      <div class="mb-8 p-6 bg-pink/10 border-2 border-pink rounded">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-pink text-2xl mb-1 uppercase letter-spacing-wide">{eventTitle}</h2>
+            <p class="text-xl"><strong>{eventDate}</strong>{#if eventTime}, {eventTime}{/if}</p>
+          </div>
+        </div>
+      </div>
+
+      {#if success || form?.success}
+        <div class="p-6 mb-8 bg-blue/20 border border-blue rounded">
+          <h3 class="mb-2">Success!</h3>
+          <p>Your episode information has been submitted successfully. Thank you!</p>
+        </div>
+
+      {:else if currentStep === 1}
+        <div class="space-y-6">
+          {#if formContent}
+            <div class="prose prose-invert max-w-none">{@html formContent}</div>
+          {/if}
+
+          {#if resources.length > 0}
+            <div class="border-t border-white/20 pt-6">
+              <h3 class="text-lg uppercase letter-spacing-wide mb-4">Resources</h3>
+              <ul class="space-y-2">
+                {#each resources as file}
+                  <li>
+                    <a href="https://cms.radiodopo.it/assets/{file.id}" target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex items-center gap-2 text-pink hover:opacity-70 transition-opacity">
+                      {file.title || file.filename_download}
+                    </a>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+
+          <div class="border-t border-white/20 pt-6">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" bind:checked={infoRead} class="mt-1 w-5 h-5 flex-shrink-0 cursor-pointer" />
+              <span class="text-lg">I have read and understood the above information.</span>
+            </label>
+          </div>
+
+          <div class="pt-2">
+            <button type="button" disabled={!infoRead} on:click={() => (currentStep = 2)}
+              class="px-8 py-4 bg-pink text-black rounded no-underline text-lg uppercase letter-spacing-wide disabled:opacity-50 disabled:cursor-not-allowed">
+              Continue
+            </button>
+          </div>
+        </div>
+
+      {:else}
+        <form method="POST" action="?/submit&eventId={calendarEvent.id}"
+          use:enhance={() => {
+            submitting = true;
+            return async ({ result, update }) => {
+              submitting = false;
+              if (result.type === "success") success = true;
+              await update();
+            };
+          }}>
+
+          <input type="hidden" name="image_id" value={imageId || ""} />
+          <input type="hidden" name="audio_id" value={audioId || ""} />
+
+          <div class="space-y-6">
+
+            <!-- Show type -->
+            <div>
+              <label class="block mb-2 text-lg uppercase letter-spacing-wide">Show Type *</label>
+              <div class="flex gap-6">
+                <label class="flex items-center gap-2 cursor-pointer text-lg">
+                  <input type="radio" name="type" value="Live" bind:group={episodeType} />
+                  Live
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-lg">
+                  <input type="radio" name="type" value="Pre-record" bind:group={episodeType} />
+                  Pre-record
+                </label>
+              </div>
+            </div>
+
+            <!-- Show selection -->
+            <div class="space-y-3">
+              <label class="block text-lg uppercase letter-spacing-wide">Show *</label>
+
+              {#if !isNewShow}
+                <select id="show_id" name="show_id" bind:value={selectedShowId} required class="w-full pill-input">
+                  <option value="" disabled>Select your show…</option>
+                  {#each shows as show}
+                    <option value={show.id}>{show.name}</option>
+                  {/each}
+                </select>
+              {:else}
+                <input type="hidden" name="show_id" value="new" />
+              {/if}
+
+              <button type="button" on:click={toggleNewShow}
+                class="text-sm uppercase letter-spacing-wide underline underline-offset-4 opacity-70 hover:opacity-100 transition-opacity">
+                {isNewShow ? "← Select existing show" : "+ Add new show"}
+              </button>
+            </div>
+
+            {#if isNewShow}
+              <div class="space-y-6 border border-white/20 rounded p-6">
+                <p class="text-sm uppercase letter-spacing-wide opacity-60">New Show Details</p>
+
+                <div>
+                  <label for="new_show_name" class="block mb-2 text-lg uppercase letter-spacing-wide">
+                    Show Name *
+                  </label>
+                  <input type="text" id="new_show_name" name="new_show_name"
+                    bind:value={newShowName}
+                    class="w-full" placeholder="Enter show name" />
+                </div>
+
+                <!-- Show image -->
+                <div>
+                  <label class="block mb-2 text-lg uppercase letter-spacing-wide">Show Image *</label>
+                  <input type="hidden" name="show_image_id" value={showImageId || ""} />
+                  <input type="file" id="show_image" accept="image/*"
+                    on:change={(e) => { const f = e.target.files?.[0]; if (f) handleShowImageFile(f); }}
+                    class="hidden" />
+                  <div class="border-2 border-dashed rounded p-6 text-center cursor-pointer transition-colors
+                      {isShowImageDragging ? 'border-orange bg-orange/10' : 'border-white/30 hover:border-white/50'}"
+                    on:click={() => document.getElementById("show_image").click()}
+                    on:drop={(e) => { e.preventDefault(); isShowImageDragging = false; const f = e.dataTransfer.files?.[0]; if (f?.type.startsWith("image/")) handleShowImageFile(f); }}
+                    on:dragover={(e) => { e.preventDefault(); isShowImageDragging = true; }}
+                    on:dragleave={() => { isShowImageDragging = false; }}
+                    role="button" tabindex="0">
+                    {#if showImageUploading}
+                      <div class="py-8 space-y-2">
+                        <svg class="w-8 h-8 mx-auto animate-spin opacity-70" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        <p class="text-sm opacity-70">Uploading...</p>
+                      </div>
+                    {:else if showImagePreview && showImageId}
+                      <div class="space-y-4">
+                        <img src={showImagePreview} alt="Preview" class="max-h-48 mx-auto rounded" />
+                        <p class="text-sm opacity-70">{showImageName} — Click or drop to change</p>
+                      </div>
+                    {:else}
+                      <div class="py-8 space-y-2">
+                        <svg class="w-16 h-16 mx-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p class="text-lg">Drag and drop an image here</p>
+                        <p class="text-sm opacity-70">or click to browse</p>
+                      </div>
+                    {/if}
+                  </div>
+                  {#if showImageError}<p class="mt-2 text-red-400">{showImageError}</p>{/if}
+                </div>
+
+                <!-- Show descriptions (at least one required) -->
+                <div class="space-y-4">
+                  <div>
+                    <label for="show_description_it" class="block mb-2 text-lg uppercase letter-spacing-wide">
+                      Show Description (IT)
+                    </label>
+                    <textarea id="show_description_it" name="show_description_it" rows="5"
+                      bind:value={showDescriptionIt}
+                      class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
+                      placeholder="Descrizione del programma in italiano"
+                      style="font-size: 1.25rem; line-height: 1.6;"></textarea>
+                  </div>
+                  <div>
+                    <label for="show_description_en" class="block mb-2 text-lg uppercase letter-spacing-wide">
+                      Show Description (EN)
+                    </label>
+                    <textarea id="show_description_en" name="show_description_en" rows="5"
+                      bind:value={showDescriptionEn}
+                      class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
+                      placeholder="Show description in English"
+                      style="font-size: 1.25rem; line-height: 1.6;"></textarea>
+                  </div>
+                  {#if !showHasDescription}
+                    <p class="text-red-400">At least one show description (EN or IT) is required.</p>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Episode title -->
+            <div>
+              <label for="title" class="block mb-2 text-lg uppercase letter-spacing-wide">Episode Title *</label>
+              <input type="text" id="title" name="title" value={form?.title ?? ""} required
+                class="w-full" placeholder="Enter episode title" />
+            </div>
+
+            <!-- Image -->
+            <div>
+              <label class="block mb-2 text-lg uppercase letter-spacing-wide">Image *</label>
+              <input type="file" id="image" accept="image/*" on:change={handleImageChange} class="hidden" />
+              <div class="border-2 border-dashed rounded p-6 text-center cursor-pointer transition-colors
+                  {isDragging ? 'border-orange bg-orange/10' : 'border-white/30 hover:border-white/50'}"
+                on:click={() => document.getElementById("image").click()}
+                on:drop={handleImageDrop}
+                on:dragover={(e) => { e.preventDefault(); isDragging = true; }}
+                on:dragleave={() => { isDragging = false; }}
+                role="button" tabindex="0">
+                {#if imageUploading}
+                  <div class="py-8 space-y-2">
+                    <svg class="w-8 h-8 mx-auto animate-spin opacity-70" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <p class="text-sm opacity-70">Uploading...</p>
+                  </div>
+                {:else if imagePreview && imageId}
+                  <div class="space-y-4">
+                    <img src={imagePreview} alt="Preview" class="max-h-64 mx-auto rounded" />
+                    <p class="text-sm opacity-70">{imageName} — Click or drop to change</p>
+                  </div>
+                {:else}
+                  <div class="py-8 space-y-2">
+                    <svg class="w-16 h-16 mx-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p class="text-lg">Drag and drop an image here</p>
+                    <p class="text-sm opacity-70">or click to browse</p>
+                  </div>
+                {/if}
+              </div>
+              {#if imageError}<p class="mt-2 text-red-400">{imageError}</p>{/if}
+            </div>
+
+            <!-- Audio — pre-records only -->
+            {#if isPreRecord}
+              <div>
+                <label class="block mb-2 text-lg uppercase letter-spacing-wide">Audio *</label>
+                <p class="text-sm opacity-70 mb-3">320kbps MP3. Max 350MB.</p>
+                <input type="file" id="audio" accept="audio/*" on:change={handleAudioChange} class="hidden" />
+                <div class="border-2 border-dashed rounded p-6 text-center cursor-pointer transition-colors
+                    {isAudioDragging ? 'border-orange bg-orange/10' : 'border-white/30 hover:border-white/50'}"
+                  on:click={() => document.getElementById("audio").click()}
+                  on:drop={handleAudioDrop}
+                  on:dragover={(e) => { e.preventDefault(); isAudioDragging = true; }}
+                  on:dragleave={() => { isAudioDragging = false; }}
+                  role="button" tabindex="0">
+                  {#if audioUploading}
+                    <div class="py-8 space-y-2">
+                      <svg class="w-8 h-8 mx-auto animate-spin opacity-70" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <p class="text-sm opacity-70">Uploading...</p>
+                    </div>
+                  {:else if audioId}
+                    <div class="py-4 space-y-2">
+                      <svg class="w-10 h-10 mx-auto opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                      </svg>
+                      <p class="text-lg">{audioName}</p>
+                      <p class="text-sm opacity-70">{(audioSize / 1024 / 1024).toFixed(1)}MB — Click or drop to change</p>
+                    </div>
+                  {:else}
+                    <div class="py-8 space-y-2">
+                      <svg class="w-16 h-16 mx-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                      </svg>
+                      <p class="text-lg">Drag and drop audio here</p>
+                      <p class="text-sm opacity-70">or click to browse</p>
+                    </div>
+                  {/if}
+                </div>
+                {#if audioError}<p class="mt-2 text-red-400">{audioError}</p>{/if}
+              </div>
+
+              <!-- Tracklist -->
+              <div>
+                <label for="tracklist" class="block mb-2 text-lg uppercase letter-spacing-wide">Tracklist</label>
+                <textarea id="tracklist" name="tracklist" rows="8"
+                  class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
+                  placeholder="Track title - artist name"
+                  style="font-size: 1.25rem; line-height: 1.6;"
+                  >{form?.tracklist ?? ""}</textarea>
+              </div>
+            {/if}
+
+            <!-- Descriptions (at least one required) -->
+            <div class="space-y-6">
+              <div>
+                <label for="description_it" class="block mb-2 text-lg uppercase letter-spacing-wide">
+                  Description (IT)
+                </label>
+                <textarea id="description_it" name="description_it" rows="8"
+                  bind:value={descriptionIt}
+                  class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
+                  placeholder="Inserisci la descrizione dell'episodio in italiano"
+                  style="font-size: 1.25rem; line-height: 1.6;"></textarea>
+              </div>
+
+              <div>
+                <label for="description_en" class="block mb-2 text-lg uppercase letter-spacing-wide">
+                  Description (EN)
+                </label>
+                <textarea id="description_en" name="description_en" rows="8"
+                  bind:value={descriptionEn}
+                  class="w-full bg-transparent border border-white p-4 text-white resize-vertical"
+                  placeholder="Enter episode description in English"
+                  style="font-size: 1.25rem; line-height: 1.6;"></textarea>
+              </div>
+
+              {#if !hasDescription}
+                <p class="text-red-400">At least one description (EN or IT) is required.</p>
+              {/if}
+            </div>
+
+            {#if form?.error}
+              <div class="p-4 bg-red/20 border border-red rounded">
+                <p class="text-red">{form.error}</p>
+              </div>
+            {/if}
+
+            <div class="pt-4 flex items-center gap-4">
+              <button type="button" on:click={() => (currentStep = 1)}
+                class="px-6 py-4 border border-white/30 text-white rounded no-underline text-lg uppercase letter-spacing-wide hover:border-white/60">
+                Back
+              </button>
+              <button type="submit"
+                disabled={submitting || imageUploading || audioUploading || showImageUploading
+                  || !imageId || (isPreRecord && !audioId) || !hasDescription
+                  || (!isNewShow && !selectedShowId) || (isNewShow && (!newShowName.trim() || !showImageId || !showHasDescription))}
+                class="px-8 py-4 bg-pink text-black rounded no-underline text-lg uppercase letter-spacing-wide disabled:opacity-50 disabled:cursor-not-allowed">
+                {#if submitting}
+                  Submitting...
+                {:else if imageUploading || audioUploading}
+                  Uploading files...
+                {:else}
+                  Submit Episode Info
+                {/if}
+              </button>
+            </div>
+          </div>
+        </form>
+      {/if}
+    {/if}
+  </div>
+</div>
+
+<style>
+  textarea {
+    font-family: inherit;
+    outline: none;
+  }
+
+  textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  @media screen and (min-width: 768px) {
+    textarea {
+      font-size: 1.5rem;
+    }
+  }
+
+  :global(.prose h1, .prose h2, .prose h3) {
+    color: inherit;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  :global(.prose p) {
+    margin-bottom: 1em;
+    line-height: 1.7;
+  }
+
+  :global(.prose ul, .prose ol) {
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  :global(.prose li) {
+    margin-bottom: 0.25em;
+  }
+
+  :global(.prose a) {
+    text-decoration: underline;
+  }
+
+  :global(.prose strong) {
+    font-weight: 700;
+  }
+</style>

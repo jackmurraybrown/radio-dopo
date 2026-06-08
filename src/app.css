@@ -40,7 +40,9 @@
   }
 
   input[type="text"],
-  input[type="search"] {
+  input[type="search"],
+  input[type="date"],
+  input[type="time"] {
     font-size: 1.5rem;
     background: transparent;
     border: none;
@@ -52,8 +54,16 @@
   }
 
   input[type="text"]::placeholder,
-  input[type="search"]::placeholder {
+  input[type="search"]::placeholder,
+  input[type="date"]::placeholder,
+  input[type="time"]::placeholder {
     color: rgba(255, 255, 255, 0.5);
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
   }
 
   button {
@@ -103,7 +113,9 @@
     }
 
     input[type="text"],
-    input[type="search"] {
+    input[type="search"],
+    input[type="date"],
+    input[type="time"] {
       font-size: 2rem;
     }
   }

@@ -21,9 +21,3 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-
-
-# cal
-directus-calendar-extension
-directus-local-test
-CALENDAR_LOCAL_TESTING.md
