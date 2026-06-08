@@ -16,7 +16,7 @@
 
   const isCurrentEpisode = $derived(
     $audioPlayerStore.mode === "episode" &&
-      $audioPlayerStore.currentEpisode?.id === episode.id
+      $audioPlayerStore.currentEpisode?.id === episode.id,
   );
 
   const isPlaying = $derived(isCurrentEpisode && $audioPlayerStore.isPlaying);
@@ -53,16 +53,16 @@
         <img src="/images/play.svg" alt="Play" class="w-10 h-10" />
       {/if}
     </button>
-    <div class="flex flex-col gap-0.5 max-md:min-w-0">
+    <div class="flex flex-col md:col-span-2 gap-0.5 max-md:min-w-0 w-full">
       {#if episode.show}
         <h3
           class="font-normal m-0 text-white uppercase text-left max-md:truncate"
         >
-          {episode.show.name}
+          {episode.title}
         </h3>
       {/if}
       <p class="font-normal m-0 text-white text-left max-md:truncate">
-        {episode.title}
+        {episode.show.name}
       </p>
     </div>
   </div>

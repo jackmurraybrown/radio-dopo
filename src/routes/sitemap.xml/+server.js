@@ -15,14 +15,15 @@ export async function GET() {
 			getAllShows()
 		]);
 
-		// Static pages
+		// Static pages with lastmod
+		const now = new Date().toISOString();
 		const staticPages = [
-			{ url: '', priority: '1.0' },
-			{ url: '/episodes', priority: '0.9' },
-			{ url: '/shows', priority: '0.9' },
-			{ url: '/schedule', priority: '0.8' },
-			{ url: '/about', priority: '0.7' },
-			{ url: '/partners', priority: '0.7' }
+			{ url: '', priority: '1.0', changefreq: 'daily' },
+			{ url: '/episodes', priority: '0.9', changefreq: 'daily' },
+			{ url: '/shows', priority: '0.9', changefreq: 'weekly' },
+			{ url: '/schedule', priority: '0.8', changefreq: 'daily' },
+			{ url: '/about', priority: '0.7', changefreq: 'monthly' },
+			{ url: '/partners', priority: '0.7', changefreq: 'monthly' }
 		];
 
 		// Generate XML
@@ -30,7 +31,8 @@ export async function GET() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${staticPages.map(page => `  <url>
     <loc>${baseUrl}${page.url}</loc>
-    <changefreq>weekly</changefreq>
+    <lastmod>${now}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
   </url>`).join('\n')}
 ${shows.map(show => `  <url>

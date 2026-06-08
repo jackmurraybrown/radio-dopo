@@ -8,6 +8,8 @@
     seekTo,
   } from "$lib/stores/audioPlayer.js";
   import LanguageSwitcher from "$lib/components/LanguageSwitcher.svelte";
+  import { formatDate } from "$lib/utils/dates.js";
+  import { currentLanguage } from "$lib/stores/language.js";
 
   /**
    * @typedef {import('$lib/types.js').Episode} Episode
@@ -209,11 +211,25 @@
         >
       </div>
     {:else if $audioPlayerStore.mode === "episode" && $audioPlayerStore.currentEpisode}
-      <!-- Show episode title when paused, fallback to show title -->
+      <!-- Show episode info when paused -->
       <div class="min-w-0 flex-1">
-        <p class="truncate m-0">
-          {($audioPlayerStore.currentEpisode.title?.trim() || $audioPlayerStore.currentEpisode.show?.name || "Episode")}
-        </p>
+        {#if $audioPlayerStore.currentEpisode.title?.trim() && $audioPlayerStore.currentEpisode.show?.name && $audioPlayerStore.currentEpisode.title.trim() !== $audioPlayerStore.currentEpisode.show.name}
+          <!-- Show both episode and show name if different -->
+          <p class="truncate m-0 text-sm">
+            {$audioPlayerStore.currentEpisode.title} • {$audioPlayerStore.currentEpisode.show.name}
+            {#if $audioPlayerStore.currentEpisode.start}
+              • {formatDate($audioPlayerStore.currentEpisode.start, "d MMM yyyy", $currentLanguage)}
+            {/if}
+          </p>
+        {:else}
+          <!-- Show only one name if they're the same or one is missing -->
+          <p class="truncate m-0 text-sm">
+            {$audioPlayerStore.currentEpisode.title?.trim() || $audioPlayerStore.currentEpisode.show?.name || "Episode"}
+            {#if $audioPlayerStore.currentEpisode.start}
+              • {formatDate($audioPlayerStore.currentEpisode.start, "d MMM yyyy", $currentLanguage)}
+            {/if}
+          </p>
+        {/if}
       </div>
     {:else}
       <!-- Show title when in live mode -->
