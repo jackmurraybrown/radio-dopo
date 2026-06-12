@@ -50,6 +50,42 @@ export async function getScheduleEvents(days = 7) {
 }
 
 /**
+ * Poll for calendar changes using a sync token.
+ * First call (syncToken = null) initialises sync from now — no events returned.
+ * Returns 410-expired error as thrown string 'SYNC_TOKEN_EXPIRED'.
+ * @param {string|null} syncToken
+ * @returns {Promise<{ events: Array, nextSyncToken: string }>}
+ */
+export async function pollCalendarChanges(syncToken) {
+	const token = await getServiceAccountToken();
+	let events = [];
+	let pageToken = undefined;
+	let nextSyncToken;
+
+	do {
+		const params = new URLSearchParams({ singleEvents: 'true', maxResults: '250' });
+		if (syncToken && !pageToken) params.set('syncToken', syncToken);
+		else if (!syncToken) params.set('timeMin', new Date().toISOString());
+		if (pageToken) params.set('pageToken', pageToken);
+
+		const res = await fetch(
+			`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(PUBLIC_GOOGLE_CALENDAR_ID)}/events?${params}`,
+			{ headers: { Authorization: `Bearer ${token}` } }
+		);
+
+		if (res.status === 410) throw new Error('SYNC_TOKEN_EXPIRED');
+		if (!res.ok) throw new Error(`Calendar API error: ${res.status}`);
+
+		const data = await res.json();
+		events = events.concat(data.items ?? []);
+		pageToken = data.nextPageToken;
+		nextSyncToken = data.nextSyncToken;
+	} while (pageToken);
+
+	return { events, nextSyncToken };
+}
+
+/**
  * Fetch all events starting on a day N days from now (includes attendees).
  * @param {number} daysFromNow
  * @returns {Promise<Array>}

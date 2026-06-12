@@ -3,15 +3,20 @@ import { RESEND_API_KEY, DOPO_FROM_EMAIL } from '$env/static/private';
 const from = DOPO_FROM_EMAIL || 'Radio Dopo <mail@mail.radiodopo.it>';
 
 /**
- * Send a show info request email using a Resend template.
+ * Send a show email using a Resend template.
  * @param {Object} params
- * @param {string} params.to - Recipient email address
- * @param {string} params.templateId - Resend template ID
- * @param {string} params.name - Attendee / host name
- * @param {string} params.showDate - Formatted date and time of the episode
- * @param {string} params.formUrl - Full submission form URL
+ * @param {string} params.to
+ * @param {string} params.templateId
+ * @param {string} params.name
+ * @param {string} params.showDate - Combined "22 June at 18:00–19:00 (Europe/Palermo CET/CEST)"
+ * @param {string} params.location
+ * @param {string} params.repeats
+ * @param {string} [params.formUrl]
  */
-export async function sendShowInfoRequest({ to, templateId, name, showDate, formUrl }) {
+export async function sendShowEmail({ to, templateId, name, showDate, location, repeats, formUrl }) {
+	const variables = { NAME: name, SHOW_DATE: showDate, LOCATION: location, REPEATS: repeats };
+	if (formUrl) variables.FORM_URL = formUrl;
+
 	const res = await fetch('https://api.resend.com/emails', {
 		method: 'POST',
 		headers: {
@@ -22,11 +27,7 @@ export async function sendShowInfoRequest({ to, templateId, name, showDate, form
 			from,
 			to: [to],
 			template_id: templateId,
-			variables: {
-				NAME: name,
-				SHOW_DATE: showDate,
-				FORM_URL: formUrl,
-			},
+			variables,
 		}),
 	});
 

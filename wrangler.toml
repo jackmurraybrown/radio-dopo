@@ -4,8 +4,15 @@ main = "cron-worker.js"
 compatibility_date = "2024-01-01"
 
 [triggers]
-crons = ["0 9 * * *"]
+crons = ["0 9 * * *", "0 * * * *"]
 
 # Set these in the Cloudflare dashboard under Workers > radio-dopo-cron > Settings > Variables
 # CRON_SECRET = "..."
-# SITE_URL = "https://radiodopo.it"
+# PUBLIC_SITE_URL = "https://radiodopo.it"
+
+# KV namespace for storing calendar sync state (syncToken + lastRunAt)
+# Create with: wrangler kv:namespace create DOPO_KV
+# Then replace the id below with the output ID
+[[kv_namespaces]]
+binding = "DOPO_KV"
+id = "8e831934f2394e789ae0d30bc48c9a17"

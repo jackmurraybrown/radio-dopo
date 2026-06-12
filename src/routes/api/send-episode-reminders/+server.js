@@ -1,17 +1,23 @@
 import { json, error } from '@sveltejs/kit';
 import { getEventsOnDay } from '$lib/server/googleCalendar.js';
-import { sendShowInfoRequest } from '$lib/server/email.js';
+import { sendShowEmail } from '$lib/server/email.js';
 import { directusServer } from '$lib/server/directus.js';
 import { readItems } from '@directus/sdk';
-import { format } from 'date-fns';
-import { CRON_SECRET } from '$env/static/private';
+import { formatShowTime } from '$lib/dateUtils.js';
+import { rruleToText } from '$lib/rrule.js';
+import {
+	CRON_SECRET,
+	RESEND_TEMPLATE_SUBMISSION_INITIAL,
+	RESEND_TEMPLATE_SUBMISSION_REMINDER,
+	RESEND_TEMPLATE_SUBMISSION_LATE,
+} from '$env/static/private';
 
 const REMINDER_DAYS = [10, 4, 3];
 
 const TEMPLATE_BY_DAYS = {
-	10: 'submission-form-initial',
-	4:  'submission-form-reminder',
-	3:  'submission-form-late',
+	10: RESEND_TEMPLATE_SUBMISSION_INITIAL,
+	4:  RESEND_TEMPLATE_SUBMISSION_REMINDER,
+	3:  RESEND_TEMPLATE_SUBMISSION_LATE,
 };
 
 /** Fetch events for all reminder days and return a map of days → events. */
@@ -48,6 +54,18 @@ async function getSubmittedCalIds(eventIds) {
 	}
 }
 
+function extractEventFields(event, baseUrl) {
+	const startDate = event.start?.dateTime || event.start?.date;
+	const endDate = event.end?.dateTime || event.end?.date;
+	return {
+		showDate: formatShowTime(startDate, endDate),
+		showName: event.summary || 'Your Show',
+		location: event.location ?? '',
+		repeats: rruleToText(event.recurrence),
+		formUrl: `${baseUrl}/submission?eventId=${event.id}`,
+	};
+}
+
 // GET /api/send-episode-reminders — dry run, no emails sent
 export async function GET({ url }) {
 	const secret = url.searchParams.get('secret');
@@ -68,11 +86,7 @@ export async function GET({ url }) {
 		for (const event of events) {
 			const submitted = submittedCalIds.has(event.id);
 			const attendees = (event.attendees ?? []).filter((a) => !a.organizer && a.email);
-			const startDate = event.start?.dateTime || event.start?.date;
-			const localDate = startDate?.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
-			const showDate = localDate ? format(new Date(localDate), 'MMMM d, yyyy HH:mm') : '';
-			const showName = event.summary || 'Your Show';
-			const formUrl = `${baseUrl}/submission?eventId=${event.id}`;
+			const { showDate, showName, location, repeats, formUrl } = extractEventFields(event, baseUrl);
 			const templateId = TEMPLATE_BY_DAYS[days];
 
 			if (submitted) {
@@ -93,6 +107,8 @@ export async function GET({ url }) {
 				eventId: event.id,
 				showName,
 				showDate,
+				location,
+				repeats,
 				formUrl,
 				templateId,
 				submitted,
@@ -129,17 +145,13 @@ export async function POST({ request, url }) {
 			const attendees = (event.attendees ?? []).filter((a) => !a.organizer && a.email);
 			if (attendees.length === 0) continue;
 
-			const startDate = event.start?.dateTime || event.start?.date;
-			const localDate = startDate?.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
-			const showDate = localDate ? format(new Date(localDate), 'MMMM d, yyyy HH:mm') : '';
-			const showName = event.summary || 'Your Show';
-			const formUrl = `${baseUrl}/submission?eventId=${event.id}`;
+			const { showDate, showName, location, repeats, formUrl } = extractEventFields(event, baseUrl);
 			const templateId = TEMPLATE_BY_DAYS[days];
 
 			for (const attendee of attendees) {
 				const name = attendee.displayName || showName;
 				try {
-					await sendShowInfoRequest({ to: attendee.email, templateId, name, showDate, formUrl });
+					await sendShowEmail({ to: attendee.email, templateId, name, showDate, location, repeats, formUrl });
 					results.push({ eventId: event.id, showName, email: attendee.email, daysAhead: days });
 				} catch (err) {
 					console.error(`[reminders] Failed to email ${attendee.email}:`, err);
