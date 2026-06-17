@@ -127,7 +127,7 @@ export async function getEpisodesByShow(showId) {
 	try {
 		const episodes = await directus.request(
 			readItems('episodes', {
-				fields: ['*', { show_id: ['id', 'name', 'slug'] }, { audio: ['filename_disk'] }],
+				fields: ['*', { show_id: ['id', 'name', 'slug', 'image'] }, { audio: ['filename_disk'] }],
 				filter: {
 					show_id: { _eq: showId },
 					status: { _eq: 'published' },
@@ -191,7 +191,7 @@ export async function getRecentEpisodes(limit = 10) {
 	try {
 		const episodes = await directus.request(
 			readItems('episodes', {
-				fields: ['*', { show_id: ['id', 'name', 'slug'] }, { audio: ['filename_disk'] }],
+				fields: ['*', { show_id: ['id', 'name', 'slug', 'image'] }, { audio: ['filename_disk'] }],
 				sort: ['-start'],
 				limit: limit,
 				filter: {

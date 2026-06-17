@@ -6,6 +6,7 @@
   } from "$lib/stores/audioPlayer.js";
   import { formatDate } from "$lib/utils/dates.js";
   import { currentLanguage } from "$lib/stores/language.js";
+  import { directusTransformer } from "$lib/unpicConfig.js";
 
   /**
    * @typedef {import('$lib/types.js').Episode} Episode
@@ -22,6 +23,25 @@
   const isPlaying = $derived(isCurrentEpisode && $audioPlayerStore.isPlaying);
 
   const lang = $derived($currentLanguage);
+
+  let hovered = $state(false);
+  let mouseX = $state(0);
+  let mouseY = $state(0);
+
+  const imageId = $derived(episode.image || episode.show?.image);
+  const thumbnailUrl = $derived(
+    imageId
+      ? `${directusTransformer(imageId)}?width=400&quality=70&format=webp`
+      : null,
+  );
+
+  /**
+   * @param {MouseEvent} e
+   */
+  function handleMouseMove(e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  }
 
   /**
    * @param {MouseEvent} e
@@ -40,6 +60,9 @@
 <a
   href="/episodes/{episode.slug}"
   class="grid grid-cols-[3fr_auto_2fr] gap-8 items-center py-8 border-b border-white/10 no-underline text-white transition-opacity last:border-b-0 hover:opacity-80 max-md:flex max-md:justify-between max-md:gap-4 max-md:py-6"
+  onmouseenter={() => (hovered = true)}
+  onmouseleave={() => (hovered = false)}
+  onmousemove={handleMouseMove}
 >
   <div class="flex items-center gap-3 max-md:flex-1 max-md:min-w-0">
     <button
@@ -73,3 +96,18 @@
     </p>
   {/if}
 </a>
+
+{#if thumbnailUrl && hovered}
+  <div
+    class="fixed pointer-events-none z-50 hidden md:block"
+    style="left: {mouseX + 16}px; top: {mouseY + 16}px;"
+  >
+    <img
+      src={thumbnailUrl}
+      alt={episode.title}
+      width="200"
+      height="200"
+      class="w-[200px] h-auto"
+    />
+  </div>
+{/if}
