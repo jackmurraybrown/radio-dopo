@@ -37,6 +37,7 @@ async function checkNewShows(env) {
 			body: JSON.stringify({
 				syncToken: state.syncToken ?? null,
 				lastRunAt: state.lastRunAt ?? null,
+				emailedAttendees: state.emailedAttendees ?? {},
 			}),
 		});
 	} catch (err) {
@@ -52,9 +53,9 @@ async function checkNewShows(env) {
 	const data = await res.json();
 	console.log('[cron] check-new-shows result:', JSON.stringify(data));
 
-	// Persist updated sync token and current run time
 	await env.DOPO_KV.put('calendar_sync_state', JSON.stringify({
 		syncToken: data.nextSyncToken,
 		lastRunAt: new Date().toISOString(),
+		emailedAttendees: data.emailedAttendees ?? state.emailedAttendees ?? {},
 	}));
 }
