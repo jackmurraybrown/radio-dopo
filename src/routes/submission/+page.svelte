@@ -2,6 +2,7 @@
   import { enhance } from "$app/forms";
   import { format } from "date-fns";
   import { marked } from "marked";
+  import MultiSelect from "$lib/components/MultiSelect.svelte";
 
   export let data;
   export let form;
@@ -59,8 +60,19 @@
 
   const AUDIO_MAX_BYTES = 350 * 1024 * 1024;
 
+  // Genre selection (2–4 required)
+  let selectedGenreIds = [];
+  $: genresValid = selectedGenreIds.length >= 2 && selectedGenreIds.length <= 4;
+
   $: calendarEvent = data.calendarEvent;
   $: shows = data.shows ?? [];
+  $: genres = data.genres ?? [];
+  $: genreOptions = genres.map(g => {
+    const it = g.translations?.find(t => t.languages_code === 'it-IT')?.name;
+    const en = g.translations?.find(t => t.languages_code === 'en-US')?.name;
+    const label = it && en && it !== en ? `${it} / ${en}` : it || en || g.slug;
+    return { id: g.id, label };
+  });
   $: submissionForm = data.submissionForm;
   $: formContent = submissionForm?.content ? marked(submissionForm.content) : "";
   $: resources = (submissionForm?.resources || []).map((r) => r.directus_files_id).filter(Boolean);
@@ -386,6 +398,23 @@
                 class="w-full" placeholder="Enter episode title" />
             </div>
 
+            <!-- Genres -->
+            <div>
+              <label class="block mb-2 text-lg uppercase letter-spacing-wide">Genres * <span class="normal-case text-sm opacity-60">(select 2–4)</span></label>
+              {#each selectedGenreIds as gid}
+                <input type="hidden" name="genre_ids" value={gid} />
+              {/each}
+              <MultiSelect
+                options={genreOptions}
+                bind:selected={selectedGenreIds}
+                max={4}
+                placeholder="Search genres..."
+              />
+              {#if selectedGenreIds.length > 0 && !genresValid}
+                <p class="mt-2 text-red-400">Please select at least 2 genres.</p>
+              {/if}
+            </div>
+
             <!-- Image -->
             <div>
               <label class="block mb-2 text-lg uppercase letter-spacing-wide">Image *</label>
@@ -521,7 +550,7 @@
               </button>
               <button type="submit"
                 disabled={submitting || imageUploading || audioUploading || showImageUploading
-                  || !imageId || (isPreRecord && !audioId) || !hasDescription
+                  || !imageId || (isPreRecord && !audioId) || !hasDescription || !genresValid
                   || (!isNewShow && !selectedShowId) || (isNewShow && (!newShowName.trim() || !showImageId || !showHasDescription))}
                 class="px-8 py-4 bg-pink text-black rounded no-underline text-lg uppercase letter-spacing-wide disabled:opacity-50 disabled:cursor-not-allowed">
                 {#if submitting}

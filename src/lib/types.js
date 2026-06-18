@@ -19,6 +19,13 @@
  */
 
 /**
+ * @typedef {Object} Genre
+ * @property {string} id
+ * @property {string} slug
+ * @property {{name: string, languages_code: string}[]} translations
+ */
+
+/**
  * @typedef {Object} Episode
  * @property {string} id
  * @property {string} title
@@ -27,6 +34,7 @@
  * @property {string} audio
  * @property {Show} show
  * @property {Translation[]} translations
+ * @property {Genre[]} genres
  */
 
 /**
