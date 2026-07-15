@@ -93,6 +93,14 @@
               >{t("nav_partners", $currentLanguage).toUpperCase()}</a
             >
           </li>
+          <li>
+            <a
+              href="/projects"
+              onclick={closeModal}
+              class="heading font-normal text-black no-underline inline-block transition-all duration-200 hover:underline"
+              >{t("nav_projects", $currentLanguage).toUpperCase()}</a
+            >
+          </li>
         </ul>
       </nav>
     </div>

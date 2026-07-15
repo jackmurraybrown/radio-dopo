@@ -1,5 +1,6 @@
 import { getAllEpisodes } from '$lib/queries/episodes.js';
 import { getAllShows } from '$lib/queries/shows.js';
+import { getAllProjects } from '$lib/queries/projects.js';
 
 /**
  * Generate sitemap.xml dynamically
@@ -10,9 +11,10 @@ export async function GET() {
 
 	try {
 		// Fetch all episodes and shows
-		const [episodes, shows] = await Promise.all([
+		const [episodes, shows, projects] = await Promise.all([
 			getAllEpisodes(),
-			getAllShows()
+			getAllShows(),
+			getAllProjects()
 		]);
 
 		// Static pages with lastmod
@@ -23,7 +25,8 @@ export async function GET() {
 			{ url: '/shows', priority: '0.9', changefreq: 'weekly' },
 			{ url: '/schedule', priority: '0.8', changefreq: 'daily' },
 			{ url: '/about', priority: '0.7', changefreq: 'monthly' },
-			{ url: '/partners', priority: '0.7', changefreq: 'monthly' }
+			{ url: '/partners', priority: '0.7', changefreq: 'monthly' },
+			{ url: '/projects', priority: '0.7', changefreq: 'monthly' }
 		];
 
 		// Generate XML
@@ -45,6 +48,11 @@ ${episodes.map(episode => `  <url>
     <lastmod>${new Date(episode.date_updated || episode.date_created).toISOString()}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>`).join('\n')}
+${projects.map(project => `  <url>
+    <loc>${baseUrl}/projects/${project.slug}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>`).join('\n')}
 </urlset>`;
 
