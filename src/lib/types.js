@@ -50,4 +50,13 @@
  * @property {Translation[]} translations
  */
 
+/**
+ * @typedef {Object} Project
+ * @property {string} id
+ * @property {string} title
+ * @property {string} slug
+ * @property {string} image
+ * @property {Translation[]} translations
+ */
+
 export { };
