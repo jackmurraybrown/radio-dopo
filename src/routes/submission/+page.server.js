@@ -1,5 +1,6 @@
 import { directusServer } from '$lib/server/directus.js';
 import { getCalendarEvent } from '$lib/server/googleCalendar.js';
+import { getAllGenres } from '$lib/queries/genres.js';
 import { readSingleton, readItems, createItem } from '@directus/sdk';
 import { fail } from '@sveltejs/kit';
 
@@ -24,8 +25,8 @@ export async function load({ url }) {
 		return { calendarEvent: null, shows: [], submissionForm };
 	}
 
-	// Fetch the Google Calendar event and the shows list in parallel
-	const [calendarEvent, shows] = await Promise.all([
+	// Fetch the Google Calendar event, shows list, and genres in parallel
+	const [calendarEvent, shows, genres] = await Promise.all([
 		getCalendarEvent(eventId).catch((err) => {
 			console.error('Error loading calendar event:', err);
 			return null;
@@ -35,9 +36,10 @@ export async function load({ url }) {
 			sort: ['name'],
 			limit: 500,
 		})).catch(() => []),
+		getAllGenres().catch(() => []),
 	]);
 
-	return { calendarEvent, shows, submissionForm };
+	return { calendarEvent, shows, genres, submissionForm };
 }
 
 export const actions = {
@@ -62,8 +64,13 @@ export const actions = {
 		const showImageId = formData.get('show_image_id');
 		const showDescriptionEn = formData.get('show_description_en');
 		const showDescriptionIt = formData.get('show_description_it');
+		const genreIds = formData.getAll('genre_ids');
 
 		// Validation
+		if (!genreIds.length || genreIds.length < 2 || genreIds.length > 4) {
+			return fail(400, { error: 'Please select between 2 and 4 genres.' });
+		}
+
 		if (!title?.trim()) {
 			return fail(400, { error: 'Episode title is required.' });
 		}
@@ -157,6 +164,7 @@ export const actions = {
 				cal_id: eventId,
 				show_id: resolvedShowId,
 				translations: translationsCreate,
+				genres: genreIds.map(id => ({ genres_id: id })),
 			};
 
 			if (audioId) episodeData.audio = audioId;

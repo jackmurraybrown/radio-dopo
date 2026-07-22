@@ -188,6 +188,21 @@
                 </p>
               </div>
             {/if}
+            {#if show.genres?.length}
+              <p class="font-normal m-0 text-white/70">
+                {#each show.genres as genre, i (genre.id)}
+                  <span
+                    >{getTranslation(
+                      genre.translations,
+                      lang,
+                      "name",
+                    )}</span
+                  >{#if i < show.genres.length - 1}<span class="mx-1.5"
+                      >/</span
+                    >{/if}
+                {/each}
+              </p>
+            {/if}
           </div>
           {#if show.image}
             <div class="w-full aspect-square overflow-hidden">

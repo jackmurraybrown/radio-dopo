@@ -16,6 +16,14 @@
  * @property {string} frequency
  * @property {string} image
  * @property {Translation[]} translations
+ * @property {Genre[]} genres
+ */
+
+/**
+ * @typedef {Object} Genre
+ * @property {string} id
+ * @property {string} slug
+ * @property {{name: string, languages_code: string}[]} translations
  */
 
 /**
@@ -27,6 +35,7 @@
  * @property {string} audio
  * @property {Show} show
  * @property {Translation[]} translations
+ * @property {Genre[]} genres
  */
 
 /**

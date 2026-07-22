@@ -5,15 +5,15 @@
     audioPlayerStore,
   } from "$lib/stores/audioPlayer.js";
   import { formatDate } from "$lib/utils/dates.js";
-  import { currentLanguage } from "$lib/stores/language.js";
+  import { currentLanguage, getTranslation } from "$lib/stores/language.js";
   import { directusTransformer } from "$lib/unpicConfig.js";
 
   /**
    * @typedef {import('$lib/types.js').Episode} Episode
    */
 
-  /** @type {{ episode: Episode, showDate?: boolean }} */
-  let { episode, showDate = true } = $props();
+  /** @type {{ episode: Episode, showDate?: boolean, onGenreClick?: (slug: string) => void }} */
+  let { episode, showDate = true, onGenreClick } = $props();
 
   const isCurrentEpisode = $derived(
     $audioPlayerStore.mode === "episode" &&
@@ -59,7 +59,7 @@
 
 <a
   href="/episodes/{episode.slug}"
-  class="grid grid-cols-[3fr_auto_2fr] gap-8 items-center py-8 border-b border-white/10 no-underline text-white transition-opacity last:border-b-0 hover:opacity-80 max-md:flex max-md:justify-between max-md:gap-4 max-md:py-6"
+  class="grid grid-cols-[1fr_auto_auto] gap-8 items-center py-8 border-b border-white/10 no-underline text-white transition-opacity last:border-b-0 hover:opacity-80 max-md:flex max-md:justify-between max-md:gap-4 max-md:py-6"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
   onmousemove={handleMouseMove}
@@ -89,9 +89,26 @@
       </p>
     </div>
   </div>
-  <div class="w-[200px] flex-shrink-0 max-md:hidden"></div>
+  <div class="flex flex-wrap items-center max-md:hidden text-right justify-end whitespace-nowrap max-w-[300px]">
+    {#if episode.genres?.length}
+      {#each episode.genres as genre, i (genre.id)}
+        <button
+          class="bg-transparent border-none p-0 text-white hover:text-pink transition-colors cursor-pointer !no-underline"
+          onclick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onGenreClick?.(genre.slug);
+          }}
+        >
+          {getTranslation(genre.translations, lang, "name")}
+        </button>{#if i < episode.genres.length - 1}<span
+            class="text-white mx-1.5">/</span
+          >{/if}
+      {/each}
+    {/if}
+  </div>
   {#if episode.start}
-    <p class="m-0 text-white text-left max-md:text-right max-md:flex-shrink-0">
+    <p class="m-0 text-white text-right max-md:flex-shrink-0 whitespace-nowrap">
       {formatDate(episode.start, "d, MMM yyyy", lang)}
     </p>
   {/if}

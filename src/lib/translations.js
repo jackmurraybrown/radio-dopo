@@ -24,7 +24,8 @@ export const translations = {
     menu: "MENU",
     schedule: "SCHEDULE",
     view_archive: "View Archive",
-    archive: "ARCHIVE"
+    archive: "ARCHIVE",
+    featured_episodes: "Featured Episodes"
   },
   it: {
     nav_home: "Home",
@@ -50,7 +51,8 @@ export const translations = {
     menu: "MENU",
     schedule: "PALINSESTO",
     view_archive: "Vedi Archivio",
-    archive: "ARCHIVIO"
+    archive: "ARCHIVIO",
+    featured_episodes: "In Primo Piano"
   }
 };
 

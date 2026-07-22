@@ -44,6 +44,17 @@
           </p>
         </div>
       {/if}
+      {#if data.show.genres?.length}
+        <p class="font-normal m-0 text-white/70">
+          {#each data.show.genres as genre, i (genre.id)}
+            <span
+              >{getTranslation(genre.translations, lang, "name")}</span
+            >{#if i < data.show.genres.length - 1}<span class="mx-1.5"
+                >/</span
+              >{/if}
+          {/each}
+        </p>
+      {/if}
     </div>
     {#if data.show.image}
       <div

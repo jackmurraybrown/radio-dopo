@@ -48,7 +48,7 @@
     {data.episode.title}
   </h1>
 
-  <h2 class="mb-12 h3 text-white font-normal text-left">
+  <h2 class="h3 text-white font-normal text-left">
     {#if data.episode.show}
       <a
         href="/shows/{data.episode.show.slug}"
@@ -59,6 +59,16 @@
     {/if}
     <span>{formatDate(data.episode.start, "d, MMM yyyy", lang)}</span>
   </h2>
+
+  {#if data.episode.genres?.length}
+    <p class="mb-12 text-white/70">
+      {#each data.episode.genres as genre, i}
+        <a href="/episodes?genre={genre.slug}" class="text-white no-underline hover:text-pink transition-colors">{getTranslation(genre.translations, lang, 'name')}</a>{#if i < data.episode.genres.length - 1}<span class="text-white mx-1.5">/</span>{/if}
+      {/each}
+    </p>
+  {:else}
+    <div class="mb-12"></div>
+  {/if}
 
   <button
     class="p-2 flex items-center justify-center transition-transform duration-200 hover:scale-110 flex-shrink-0 mb-12 no-underline"
