@@ -1,10 +1,9 @@
-import { getRecentEpisodes } from '$lib/queries/episodes.js';
-import { getHomeContent } from '$lib/queries/home.js';
+import { getHomeContent, getFeaturedEpisodes } from '$lib/queries/home.js';
 
 export async function load() {
 	try {
 		const [episodes, home] = await Promise.all([
-			getRecentEpisodes(6),
+			getFeaturedEpisodes(),
 			getHomeContent()
 		]);
 

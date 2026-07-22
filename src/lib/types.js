@@ -16,6 +16,7 @@
  * @property {string} frequency
  * @property {string} image
  * @property {Translation[]} translations
+ * @property {Genre[]} genres
  */
 
 /**

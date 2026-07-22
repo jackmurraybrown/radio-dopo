@@ -165,7 +165,7 @@
           <h2
             class="font-normal text-white uppercase tracking-[0.1em] text-center h-full flex items-center"
           >
-            Recent Episodes
+            {t("featured_episodes", $currentLanguage)}
           </h2>
           <button
             onclick={toggleSearch}

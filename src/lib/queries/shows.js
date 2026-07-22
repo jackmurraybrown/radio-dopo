@@ -1,6 +1,18 @@
 import { directus, getAssetUrl } from '../directus.js';
 import { readItems } from '@directus/sdk';
 
+const SHOW_GENRES_FIELD = { genres: [{ genres_id: ['id', 'slug', { translations: ['name', 'languages_code'] }] }] };
+
+/**
+ * @param {any} show
+ */
+function transformShow(show) {
+	return {
+		...show,
+		genres: (show.genres || []).map(j => j.genres_id).filter(Boolean),
+	};
+}
+
 /**
  * Get all shows
  * @returns {Promise<Array>} Array of show objects
@@ -9,14 +21,14 @@ export async function getAllShows() {
 	try {
 		const shows = await directus.request(
 			readItems('shows', {
-				fields: ['*', 'translations.*'],
+				fields: ['*', 'translations.*', SHOW_GENRES_FIELD],
 				sort: ['name'],
 				filter: {
 					status: { _eq: 'published' }
 				}
 			})
 		);
-		return shows;
+		return shows.map(transformShow);
 	} catch (error) {
 		console.error('Error fetching shows:', error);
 		throw error;
@@ -42,14 +54,14 @@ export async function getShows(limit = 20, offset = 0, search = '') {
 
 		const shows = await directus.request(
 			readItems('shows', {
-				fields: ['*', 'translations.*'],
+				fields: ['*', 'translations.*', SHOW_GENRES_FIELD],
 				sort: ['name'],
 				limit,
 				offset,
 				filter
 			})
 		);
-		return shows;
+		return shows.map(transformShow);
 	} catch (error) {
 		console.error('Error fetching shows:', error);
 		throw error;
@@ -68,6 +80,7 @@ export async function getShowBySlug(slug) {
 				fields: [
 					'*',
 					'translations.*',
+					SHOW_GENRES_FIELD,
 					{
 						episodes: [
 							'*',
@@ -101,7 +114,7 @@ export async function getShowBySlug(slug) {
 					}))
 					.sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime()); // Sort by date descending
 			}
-			return show;
+			return transformShow(show);
 		}
 		return null;
 	} catch (error) {

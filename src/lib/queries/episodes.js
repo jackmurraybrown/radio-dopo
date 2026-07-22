@@ -1,9 +1,9 @@
 import { directus, getAssetUrl } from '../directus.js';
 import { readItems } from '@directus/sdk';
 
-const EPISODE_FIELDS = ['*', { translations: ['*'] }, { show_id: ['id', 'name', 'slug', 'image', { translations: ['*'] }] }, { audio: ['filename_disk'] }, { genres: [{ genres_id: ['id', 'slug', { translations: ['name', 'languages_code'] }] }] }];
+export const EPISODE_FIELDS = ['*', { translations: ['*'] }, { show_id: ['id', 'name', 'slug', 'image', { translations: ['*'] }] }, { audio: ['filename_disk'] }, { genres: [{ genres_id: ['id', 'slug', { translations: ['name', 'languages_code'] }] }] }];
 
-function transformEpisode(episode) {
+export function transformEpisode(episode) {
 	return {
 		...episode,
 		show: episode.show_id,
