@@ -196,10 +196,14 @@
           </button>
         {/if}
       </div>
-      <div class="flex flex-col gap-8 w-full min-w-0 max-w-3xl mx-auto">
+      <div class="flex flex-col gap-8 w-full min-w-0 max-w-5xl mx-auto">
         {#if displayedEpisodes.length > 0}
           {#each displayedEpisodes as episode (episode.id)}
-            <EpisodeRow {episode} showDate={searchMode && searchQuery} />
+            <EpisodeRow
+              {episode}
+              showDate={searchMode && searchQuery}
+              showShowName={false}
+            />
           {/each}
         {:else if searchMode && searchQuery && !isSearching}
           <p class="text-center text-white/50 py-16">No results found</p>

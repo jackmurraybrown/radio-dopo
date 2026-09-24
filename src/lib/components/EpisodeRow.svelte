@@ -12,8 +12,8 @@
    * @typedef {import('$lib/types.js').Episode} Episode
    */
 
-  /** @type {{ episode: Episode, showDate?: boolean, onGenreClick?: (slug: string) => void }} */
-  let { episode, showDate = true, onGenreClick } = $props();
+  /** @type {{ episode: Episode, showDate?: boolean, showShowName?: boolean, onGenreClick?: (slug: string) => void }} */
+  let { episode, showDate = true, showShowName = true, onGenreClick } = $props();
 
   const isCurrentEpisode = $derived(
     $audioPlayerStore.mode === "episode" &&
@@ -101,14 +101,17 @@
           {formatDate(episode.start, "d, MMM yyyy", lang)}
         </p>
       {/if}
-      {#if episode.show}
+      {#if showShowName && episode.show}
         <h3
           class="font-normal m-0 text-white uppercase text-left max-xl:truncate"
         >
           {episode.show.name}
         </h3>
       {/if}
-      <p class="font-normal m-0 text-white text-left max-xl:truncate">
+      <p
+        class="font-normal m-0 text-white text-left max-xl:truncate"
+        class:uppercase={!showShowName}
+      >
         {episode.title}
       </p>
       {#if episode.genres?.length}
