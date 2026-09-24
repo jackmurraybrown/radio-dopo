@@ -59,10 +59,10 @@
 
 {#snippet genreList()}
   {#if episode.genres?.length}
-    {#each episode.genres as genre, i (genre.id)}
+    {#each episode.genres as genre (genre.id)}
       {#if genre.slug}
         <button
-          class="bg-transparent border-none p-0 italic text-white hover:text-pink transition-colors cursor-pointer !no-underline"
+          class="bg-transparent border border-white px-2 py-0.5 text-sm leading-tight uppercase text-white hover:bg-white hover:text-black hover:opacity-100 transition-colors cursor-pointer !no-underline"
           onclick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -72,12 +72,10 @@
           {getTranslation(genre.translations, lang, "name")}
         </button>
       {:else}
-        <span class="italic text-white">
+        <span class="border border-white px-2 py-0.5 text-sm leading-tight uppercase text-white">
           {getTranslation(genre.translations, lang, "name")}
         </span>
-      {/if}{#if i < episode.genres.length - 1}<span
-          class="text-white mx-1.5">/</span
-        >{/if}
+      {/if}
     {/each}
   {/if}
 {/snippet}
@@ -121,13 +119,13 @@
         {episode.title}
       </p>
       {#if episode.genres?.length}
-        <div class="xl:hidden flex flex-wrap min-w-0 max-w-full items-center text-left text-sm text-white/70">
+        <div class="xl:hidden flex flex-wrap gap-1.5 mt-1 min-w-0 max-w-full items-center text-left">
           {@render genreList()}
         </div>
       {/if}
     </div>
   </div>
-  <div class="flex flex-wrap items-center max-xl:hidden text-right justify-end whitespace-nowrap max-w-[300px]">
+  <div class="flex flex-wrap gap-1.5 items-center max-xl:hidden text-right justify-end whitespace-nowrap max-w-[300px]">
     {@render genreList()}
   </div>
   {#if episode.start}
