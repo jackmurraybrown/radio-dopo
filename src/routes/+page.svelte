@@ -196,7 +196,7 @@
           </button>
         {/if}
       </div>
-      <div class="flex flex-col gap-8 max-w-3xl mx-auto">
+      <div class="flex flex-col gap-8 w-full min-w-0 max-w-3xl mx-auto">
         {#if displayedEpisodes.length > 0}
           {#each displayedEpisodes as episode (episode.id)}
             <EpisodeRow {episode} showDate={searchMode && searchQuery} />

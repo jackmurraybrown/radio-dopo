@@ -156,7 +156,7 @@
   </div>
 
   <div
-    class="grid grid-cols-[80px_1fr_80px] min-h-[calc(100vh-80px)] max-md:grid-cols-1"
+    class="grid grid-cols-[80px_minmax(0,1fr)_80px] min-h-[calc(100vh-80px)] max-md:grid-cols-1"
   >
     <button
       class="sidebar sidebar-left no-underline"
@@ -166,7 +166,7 @@
       <p class="sidebar-text heading m-0">{t("menu", $currentLanguage)}</p>
     </button>
 
-    <main class="main-content">
+    <main class="main-content min-w-0">
       {@render children?.()}
     </main>
 
