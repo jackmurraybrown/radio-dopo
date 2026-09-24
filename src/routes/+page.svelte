@@ -1,4 +1,5 @@
 <script>
+  import { goto } from "$app/navigation";
   import { onMount } from "svelte";
   import EpisodeRow from "$lib/components/EpisodeRow.svelte";
   import DirectusImage from "$lib/components/DirectusImage.svelte";
@@ -203,6 +204,7 @@
               {episode}
               showDate={searchMode && searchQuery}
               showShowName={false}
+              onGenreClick={(slug) => goto(`/episodes?genre=${slug}`)}
             />
           {/each}
         {:else if searchMode && searchQuery && !isSearching}

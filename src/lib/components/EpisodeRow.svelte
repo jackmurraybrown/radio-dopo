@@ -60,16 +60,22 @@
 {#snippet genreList()}
   {#if episode.genres?.length}
     {#each episode.genres as genre, i (genre.id)}
-      <button
-        class="bg-transparent border-none p-0 text-white hover:text-pink transition-colors cursor-pointer !no-underline"
-        onclick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onGenreClick?.(genre.slug);
-        }}
-      >
-        {getTranslation(genre.translations, lang, "name")}
-      </button>{#if i < episode.genres.length - 1}<span
+      {#if genre.slug}
+        <button
+          class="bg-transparent border-none p-0 italic text-white hover:text-pink transition-colors cursor-pointer !no-underline"
+          onclick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onGenreClick?.(genre.slug);
+          }}
+        >
+          {getTranslation(genre.translations, lang, "name")}
+        </button>
+      {:else}
+        <span class="italic text-white">
+          {getTranslation(genre.translations, lang, "name")}
+        </span>
+      {/if}{#if i < episode.genres.length - 1}<span
           class="text-white mx-1.5">/</span
         >{/if}
     {/each}
