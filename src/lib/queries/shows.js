@@ -86,7 +86,8 @@ export async function getShowBySlug(slug) {
 							'*',
 							'translations.*',
 							{ show_id: ['id', 'name', 'slug'] },
-							{ audio: ['filename_disk'] }
+							{ audio: ['filename_disk'] },
+							{ genres: [{ genres_id: ['id', 'slug', { translations: ['name', 'languages_code'] }] }] }
 						]
 					}
 				],
@@ -108,6 +109,7 @@ export async function getShowBySlug(slug) {
 					.map(episode => ({
 						...episode,
 						show: episode.show_id,
+						genres: (episode.genres || []).map(j => j.genres_id).filter(Boolean),
 						audio: episode.audio?.filename_disk
 							? getAssetUrl(episode.audio.filename_disk)
 							: null

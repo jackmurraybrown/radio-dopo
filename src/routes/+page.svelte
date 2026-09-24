@@ -1,5 +1,4 @@
 <script>
-  import { goto } from "$app/navigation";
   import { onMount } from "svelte";
   import EpisodeRow from "$lib/components/EpisodeRow.svelte";
   import DirectusImage from "$lib/components/DirectusImage.svelte";
@@ -197,14 +196,13 @@
           </button>
         {/if}
       </div>
-      <div class="flex flex-col gap-8 w-full min-w-0 max-w-5xl mx-auto">
+      <div class="flex flex-col gap-8 w-full min-w-0 max-w-3xl mx-auto">
         {#if displayedEpisodes.length > 0}
           {#each displayedEpisodes as episode (episode.id)}
             <EpisodeRow
               {episode}
               showDate={searchMode && searchQuery}
               showShowName={false}
-              onGenreClick={(slug) => goto(`/episodes?genre=${slug}`)}
             />
           {/each}
         {:else if searchMode && searchQuery && !isSearching}

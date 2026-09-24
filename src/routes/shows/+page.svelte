@@ -1,5 +1,5 @@
 <script>
-  import BackgroundPattern from "$lib/components/BackgroundPattern.svelte";
+  import GenrePills from "$lib/components/GenrePills.svelte";  import BackgroundPattern from "$lib/components/BackgroundPattern.svelte";
   import DirectusImage from "$lib/components/DirectusImage.svelte";
   import Markdown from "$lib/components/Markdown.svelte";
   import { currentLanguage, getTranslation } from "$lib/stores/language.js";
@@ -177,9 +177,12 @@
           <div
             class="flex flex-col gap-2 justify-between h-full p-3 pb-0 min-[480px]:px-6 min-[480px]:pb-0"
           >
-            <h2 class="font-normal m-0 text-white underline">
-              {show.name}
-            </h2>
+            <div class="flex flex-col gap-2">
+              <h2 class="font-normal m-0 text-white underline">
+                {show.name}
+              </h2>
+              <GenrePills genres={show.genres} />
+            </div>
             {#if show.frequency}
               <div class="flex gap-2 items-start">
                 <span class="mt-1.5">→</span>
@@ -187,21 +190,6 @@
                   {show.frequency.replace(/\s*\/\s*/g, "\n")}
                 </p>
               </div>
-            {/if}
-            {#if show.genres?.length}
-              <p class="font-normal m-0 text-white/70">
-                {#each show.genres as genre, i (genre.id)}
-                  <span
-                    >{getTranslation(
-                      genre.translations,
-                      lang,
-                      "name",
-                    )}</span
-                  >{#if i < show.genres.length - 1}<span class="mx-1.5"
-                      >/</span
-                    >{/if}
-                {/each}
-              </p>
             {/if}
           </div>
           {#if show.image}

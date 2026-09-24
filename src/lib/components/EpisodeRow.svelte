@@ -6,6 +6,7 @@
   } from "$lib/stores/audioPlayer.js";
   import { formatDate } from "$lib/utils/dates.js";
   import { currentLanguage, getTranslation } from "$lib/stores/language.js";
+  import GenrePills from "$lib/components/GenrePills.svelte";
   import { directusTransformer } from "$lib/unpicConfig.js";
 
   /**
@@ -57,32 +58,9 @@
   }
 </script>
 
-{#snippet genreList()}
-  {#if episode.genres?.length}
-    {#each episode.genres as genre (genre.id)}
-      {#if genre.slug}
-        <button
-          class="bg-transparent border border-white px-2 py-0.5 text-sm leading-tight uppercase text-white hover:bg-white hover:text-black hover:opacity-100 transition-colors cursor-pointer !no-underline"
-          onclick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onGenreClick?.(genre.slug);
-          }}
-        >
-          {getTranslation(genre.translations, lang, "name")}
-        </button>
-      {:else}
-        <span class="border border-white px-2 py-0.5 text-sm leading-tight uppercase text-white">
-          {getTranslation(genre.translations, lang, "name")}
-        </span>
-      {/if}
-    {/each}
-  {/if}
-{/snippet}
-
 <a
   href="/episodes/{episode.slug}"
-  class="grid grid-cols-[minmax(0,1fr)_auto_auto] w-full min-w-0 gap-8 items-center py-8 border-b border-white/10 no-underline text-white transition-opacity last:border-b-0 hover:opacity-80 max-xl:flex max-xl:justify-between max-xl:gap-4 max-xl:py-6"
+  class="grid grid-cols-[minmax(0,1fr)_auto] w-full min-w-0 gap-8 items-center py-8 border-b border-white/10 no-underline text-white transition-opacity last:border-b-0 hover:opacity-80 max-xl:flex max-xl:justify-between max-xl:gap-4 max-xl:py-6"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
   onmousemove={handleMouseMove}
@@ -99,7 +77,7 @@
         <img src="/images/play.svg" alt="Play" class="w-10 h-10" />
       {/if}
     </button>
-    <div class="flex flex-col xl:col-span-2 gap-0.5 max-xl:min-w-0 w-full">
+    <div class="flex flex-col gap-0.5 max-xl:min-w-0 w-full">
       {#if episode.start}
         <p class="xl:hidden font-normal m-0 text-white/70 text-left">
           {formatDate(episode.start, "d, MMM yyyy", lang)}
@@ -118,15 +96,8 @@
       >
         {episode.title}
       </p>
-      {#if episode.genres?.length}
-        <div class="xl:hidden flex flex-wrap gap-1.5 mt-1 min-w-0 max-w-full items-center text-left">
-          {@render genreList()}
-        </div>
-      {/if}
+      <GenrePills genres={episode.genres} {onGenreClick} class="mt-1" />
     </div>
-  </div>
-  <div class="flex flex-wrap gap-1.5 items-center max-xl:hidden text-right justify-end whitespace-nowrap max-w-[300px]">
-    {@render genreList()}
   </div>
   {#if episode.start}
     <p class="m-0 text-white text-right max-xl:hidden whitespace-nowrap">

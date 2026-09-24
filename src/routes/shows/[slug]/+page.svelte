@@ -1,5 +1,5 @@
 <script>
-  import BackgroundPattern from "$lib/components/BackgroundPattern.svelte";
+  import GenrePills from "$lib/components/GenrePills.svelte";  import BackgroundPattern from "$lib/components/BackgroundPattern.svelte";
   import EpisodeRow from "$lib/components/EpisodeRow.svelte";
   import DirectusImage from "$lib/components/DirectusImage.svelte";
   import Markdown from "$lib/components/Markdown.svelte";
@@ -33,9 +33,12 @@
     class="grid grid-cols-[3fr_4fr_4fr] gap-8 items-start mb-12 md:mb-24 max-md:grid-cols-1 max-md:gap-4"
   >
     <div class="flex flex-col gap-2 justify-between h-full">
-      <h1 class="font-normal m-0 text-left">
-        {data.show.name}
-      </h1>
+      <div class="flex flex-col gap-2">
+        <h1 class="font-normal m-0 text-left">
+          {data.show.name}
+        </h1>
+        <GenrePills genres={data.show.genres} />
+      </div>
       {#if data.show.frequency}
         <div class="flex gap-2 items-start">
           <span class="mt-1.5">→</span>
@@ -43,17 +46,6 @@
             {data.show.frequency.replace(/\s*\/\s*/g, "\n")}
           </p>
         </div>
-      {/if}
-      {#if data.show.genres?.length}
-        <p class="font-normal m-0 text-white/70">
-          {#each data.show.genres as genre, i (genre.id)}
-            <span
-              >{getTranslation(genre.translations, lang, "name")}</span
-            >{#if i < data.show.genres.length - 1}<span class="mx-1.5"
-                >/</span
-              >{/if}
-          {/each}
-        </p>
       {/if}
     </div>
     {#if data.show.image}
